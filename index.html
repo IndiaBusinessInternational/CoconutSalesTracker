@@ -130,7 +130,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v1.4</span>
+  <span class="app-version-badge">v2</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
 </header>
@@ -140,6 +140,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
   <div class="page active" id="page-sale">
     <div class="card">
       <h2>🧾 New Sale</h2>
+      <div class="hint" id="saleEditBanner" style="display:none;"></div>
       <label for="buyerName">Buyer Name</label>
       <input type="text" id="buyerName" placeholder="Walk-in buyer" autocomplete="off">
 
@@ -180,7 +181,9 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div class="row">
           <div><label>Pieces</label><input type="number" id="kadPcs" inputmode="numeric" min="0" step="1" placeholder="0"></div>
           <div><label>Rate ₹/pc</label><input type="number" id="kadRate" inputmode="decimal" min="0" step="0.25"></div>
+          <div><label>Labour ₹/pc (−)</label><input type="number" id="kadLab" inputmode="decimal" min="0" step="0.25"></div>
         </div>
+        <div class="rate-note" id="kadNet">Labour charge per piece is subtracted from the husk rate — e.g. rate ₹3 − labour ₹1 = ₹2/pc paid to us.</div>
       </div>
 
       <div class="breakdown" id="saleBreakdown"></div>
@@ -216,6 +219,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
   <div class="page" id="page-batch">
     <div class="card">
       <h2>📦 Coconut Batch Received</h2>
+      <div class="hint" id="batchEditBanner" style="display:none;"></div>
       <div class="row">
         <div><label>Date</label><input type="date" id="batchDate"></div>
         <div><label>Coconut Count</label><input type="number" id="batchCount" inputmode="numeric" min="0" step="1" placeholder="e.g. 2000"></div>
@@ -227,6 +231,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 
     <div class="card">
       <h2>💪 Labour (De-husking)</h2>
+      <div class="hint" id="labourEditBanner" style="display:none;"></div>
       <div class="row">
         <div><label>Date</label><input type="date" id="labDate"></div>
         <div><label>Persons</label><input type="number" id="labPersons" inputmode="numeric" min="0" step="1" placeholder="4"></div>
@@ -270,6 +275,17 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import Backup</button>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importData(event)">
+    </div>
+    <div class="card">
+      <h2>🟢 Google Drive Backend (Auto-Sync)</h2>
+      <div class="rate-note" style="margin-top:0;" id="gasStatus">Not connected. One-time setup: create a Google Sheet in your Drive → Extensions → Apps Script → paste the Code.gs from the repo → Deploy as Web App (Execute as Me, Access: Anyone) → paste the /exec URL here. After that every entry auto-saves to the Sheet.</div>
+      <label>Apps Script Web App URL</label>
+      <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+      <div class="row">
+        <button class="btn btn-outline" onclick="saveGasUrl()">💾 Save URL</button>
+        <button class="btn btn-primary" onclick="syncDrive(true)">☁️ Sync Now</button>
+      </div>
+      <button class="btn btn-outline" onclick="restoreDrive()">⬇️ Restore from Drive</button>
     </div>
   </div>
 
@@ -341,7 +357,7 @@ function load(){
     return Object.assign(structuredClone(DEFAULTS), d);
   }catch(e){ return structuredClone(DEFAULTS); }
 }
-function save(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); queueSync(); }
 
 const inr = n => '₹' + (Math.round(n*100)/100).toLocaleString('en-IN', {maximumFractionDigits:2});
 const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
@@ -360,6 +376,64 @@ function go(page, btn){
   if(page==='report') renderReport();
   if(page==='rates') renderRates();
   window.scrollTo(0,0);
+}
+function goPage(p){ go(p, document.querySelector('.tabbar button[data-page="'+p+'"]')); }
+
+/* ---------- editing (fix mistakes: edit / modify any record) ---------- */
+const EDITING = { sale:null, batch:null, labour:null };
+function setBanner(kind, html){
+  const el = document.getElementById(kind+'EditBanner');
+  if(html){ el.innerHTML = html; el.style.display='block'; } else { el.style.display='none'; }
+}
+function cancelEdit(kind){
+  EDITING[kind] = null;
+  setBanner(kind, '');
+  if(kind==='sale') clearSaleForm();
+  if(kind==='batch'){ document.getElementById('batchCount').value=''; document.getElementById('batchNote').value=''; }
+  if(kind==='labour'){ document.getElementById('labCoconuts').value=''; document.getElementById('labPersons').value=''; }
+}
+function editSale(id){
+  const s = DB.sales.find(x=>x.id===id); if(!s) return;
+  goPage('sale');
+  clearSaleForm();
+  EDITING.sale = id;
+  document.getElementById('buyerName').value = s.buyer==='Walk-in buyer' ? '' : s.buyer;
+  s.items.forEach(i=>{
+    if(i.type==='kad'){
+      document.getElementById('kadPcs').value = i.qty;
+      document.getElementById('kadRate').value = i.rate;
+      document.getElementById('kadLab').value = i.labRate||0;
+    }else{
+      const q = i.type;
+      W[q] = (i.wts && i.wts.length) ? i.wts.slice() : [i.qty];
+      document.getElementById(q+'Count').value = i.count||'';
+      document.getElementById(q+'Rate').value = i.rate;
+      syncW(q);
+    }
+  });
+  refreshTotals();
+  setBanner('sale', `✏️ Editing sale of <b>${esc(s.buyer)}</b> (${fmtDate(s.date)}). "Save Sale" will update it. <a href="#" onclick="cancelEdit('sale');return false;">Cancel</a>`);
+  window.scrollTo(0,0);
+}
+function editBatch(id){
+  const b = DB.batches.find(x=>x.id===id); if(!b) return;
+  goPage('batch');
+  EDITING.batch = id;
+  document.getElementById('batchDate').value = b.date;
+  document.getElementById('batchCount').value = b.count;
+  document.getElementById('batchNote').value = b.note||'';
+  setBanner('batch', `✏️ Editing batch of ${fmtDate(b.date)}. "Add Batch" will update it. <a href="#" onclick="cancelEdit('batch');return false;">Cancel</a>`);
+  window.scrollTo(0,0);
+}
+function editLabour(id){
+  const l = DB.labour.find(x=>x.id===id); if(!l) return;
+  goPage('batch');
+  EDITING.labour = id;
+  document.getElementById('labDate').value = l.date;
+  document.getElementById('labPersons').value = l.persons||'';
+  document.getElementById('labCoconuts').value = l.coconuts;
+  document.getElementById('labRate').value = l.rate;
+  setBanner('labour', `✏️ Editing labour entry of ${fmtDate(l.date)}. "Add Labour Charge" will update it. <a href="#" onclick="cancelEdit('labour');return false;">Cancel</a>`);
 }
 
 /* ---------- weighments (e.g. 50 kg on the scale, 10-15 times) ---------- */
@@ -410,25 +484,30 @@ function currentItems(){
   const items = [];
   const gKg=num('goodKg'), gCt=num('goodCount'), gR=num('goodRate');
   const lKg=num('lowKg'), lCt=num('lowCount'), lR=num('lowRate');
-  const kP=num('kadPcs'), kR=num('kadRate');
+  const kP=num('kadPcs'), kR=num('kadRate'), kL=num('kadLab');
   if(gKg>0) items.push({type:'good', label:'Good Quality Coconut', qty:gKg, unit:'kg', count:gCt, rate:gR, amount:gKg*gR, wts:W.good.slice()});
   if(lKg>0) items.push({type:'low', label:'Lower Quality Coconut', qty:lKg, unit:'kg', count:lCt, rate:lR, amount:lKg*lR, wts:W.low.slice()});
-  if(kP>0) items.push({type:'kad', label:'Coconut Husk | Kadambai', qty:kP, unit:'pcs', count:kP, rate:kR, amount:kP*kR});
+  if(kP>0) items.push({type:'kad', label:'Coconut Husk | Kadambai', qty:kP, unit:'pcs', count:kP, rate:kR, labRate:kL, amount:kP*(kR-kL)});
   return items;
 }
 function refreshTotals(){
-  const g = num('goodKg')*num('goodRate'), l = num('lowKg')*num('lowRate'), k = num('kadPcs')*num('kadRate');
+  const g = num('goodKg')*num('goodRate'), l = num('lowKg')*num('lowRate');
+  const kNetRate = num('kadRate') - num('kadLab');
+  const k = num('kadPcs') * kNetRate;
   document.getElementById('amtGood').textContent = inr(g);
   document.getElementById('amtLow').textContent = inr(l);
   document.getElementById('amtKad').textContent = inr(k);
+  document.getElementById('kadNet').textContent = num('kadLab')>0
+    ? `Net rate after labour: ${inr(num('kadRate'))} − ${inr(num('kadLab'))} labour = ${inr(kNetRate)}/pc paid to us.`
+    : 'Labour charge per piece is subtracted from the husk rate — e.g. rate ₹3 − labour ₹1 = ₹2/pc paid to us.';
   const rows = [];
   if(g>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Good Quality Total <small>(${num('goodKg')} kg × ${inr(num('goodRate'))})</small></span><span class="bd-v">${inr(g)}</span></div>`);
   if(l>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Lower Quality Total <small>(${num('lowKg')} kg × ${inr(num('lowRate'))})</small></span><span class="bd-v">${inr(l)}</span></div>`);
-  if(k>0) rows.push(`<div class="bd-row"><span class="bd-l">🌰 Coconut Husk | Kadambai Total <small>(${num('kadPcs')} pcs × ${inr(num('kadRate'))})</small></span><span class="bd-v">${inr(k)}</span></div>`);
+  if(num('kadPcs')>0) rows.push(`<div class="bd-row"><span class="bd-l">🌰 Coconut Husk | Kadambai Total <small>(${num('kadPcs')} pcs × ${num('kadLab')>0 ? '('+inr(num('kadRate'))+' − '+inr(num('kadLab'))+' labour)' : inr(num('kadRate'))})</small></span><span class="bd-v"${k<0?' style="color:var(--red)"':''}>${inr(k)}</span></div>`);
   document.getElementById('saleBreakdown').innerHTML = rows.join('');
   document.getElementById('saleTotal').textContent = inr(g+l+k);
 }
-['goodKg','goodCount','goodRate','lowKg','lowCount','lowRate','kadPcs','kadRate'].forEach(id=>{
+['goodKg','goodCount','goodRate','lowKg','lowCount','lowRate','kadPcs','kadRate','kadLab'].forEach(id=>{
   document.getElementById(id).addEventListener('input', refreshTotals);
 });
 // typing the total directly clears the weighment chips (one source of truth at a time)
@@ -447,7 +526,14 @@ function saveSale(){
     buyer: document.getElementById('buyerName').value.trim() || 'Walk-in buyer',
     items, total: items.reduce((s,i)=>s+i.amount,0)
   };
-  DB.sales.unshift(sale);
+  if(EDITING.sale){
+    const idx = DB.sales.findIndex(x=>x.id===EDITING.sale);
+    if(idx>-1){ sale.id = DB.sales[idx].id; sale.date = DB.sales[idx].date; sale.time = DB.sales[idx].time; DB.sales[idx] = sale; }
+    else DB.sales.unshift(sale);
+    EDITING.sale = null; setBanner('sale','');
+  }else{
+    DB.sales.unshift(sale);
+  }
   save();
   clearSaleForm();
   renderRecent();
@@ -465,6 +551,7 @@ function applyRateDefaults(){
   document.getElementById('goodRate').value = DB.rates.good;
   document.getElementById('lowRate').value = DB.rates.low;
   document.getElementById('kadRate').value = DB.rates.kad;
+  document.getElementById('kadLab').value = DB.rates.lab;
 }
 
 /* ---------- bill ---------- */
@@ -493,8 +580,10 @@ function shareWhatsApp(){
     const qty = i.unit==='kg'
       ? i.qty + ' kg' + (i.wts && i.wts.length>1 ? ' ('+i.wts.length+' weighments)' : '') + (i.count ? ', '+i.count+' pcs' : '')
       : i.qty + ' pcs';
+    const rateTxt = i.unit==='kg' ? inr(i.rate)+'/kg'
+      : (i.labRate>0 ? '('+inr(i.rate)+' − '+inr(i.labRate)+' labour)/pc' : inr(i.rate)+'/pc');
     lines.push('*' + i.label + '*');
-    lines.push('  ' + qty + ' × ' + inr(i.rate) + '/' + (i.unit==='kg'?'kg':'pc') + ' = ' + inr(i.amount));
+    lines.push('  ' + qty + ' × ' + rateTxt + ' = ' + inr(i.amount));
   });
   lines.push('--------------------------------');
   lines.push('💰 *AMOUNT TO COLLECT: ' + inr(s.total) + '*');
@@ -509,7 +598,9 @@ function showBill(sale){
     if(i.wts && i.wts.length>1) sub.push(i.wts.length+' weighments');
     if(i.count && i.unit==='kg') sub.push(i.count+' pcs');
     const qty = i.unit==='kg' ? (i.qty+' kg' + (sub.length?`<br><small style="color:var(--muted)">${sub.join(', ')}</small>`:'')) : (i.qty+' pcs');
-    return `<tr><td>${i.label}</td><td>${qty}</td><td>${inr(i.rate)}/${i.unit==='kg'?'kg':'pc'}</td><td>${inr(i.amount)}</td></tr>`;
+    const rateTxt = i.unit==='kg' ? inr(i.rate)+'/kg'
+      : (i.labRate>0 ? `(${inr(i.rate)} − ${inr(i.labRate)})/pc` : inr(i.rate)+'/pc');
+    return `<tr><td>${i.label}</td><td>${qty}</td><td>${rateTxt}</td><td>${inr(i.amount)}</td></tr>`;
   }).join('');
   document.getElementById('billTotal').textContent = inr(sale.total);
   document.getElementById('billModal').classList.add('open');
@@ -548,6 +639,7 @@ function saleRowHTML(s){
       <div class="li-sub">${fmtDate(s.date)} ${s.time||''} &nbsp;${pills}</div>
     </div>
     <span class="li-amt">${inr(s.total)}</span>
+    <button class="btn-danger-sm" style="color:var(--amber);" onclick="editSale('${s.id}')">✏️</button>
     <button class="btn-danger-sm" onclick="delSale('${s.id}')">🗑️</button>
   </div>`;
 }
@@ -562,6 +654,7 @@ function renderRecent(){
 }
 function delSale(id){
   if(!confirm('Delete this sale?')) return;
+  if(EDITING.sale===id) cancelEdit('sale');
   DB.sales = DB.sales.filter(s=>s.id!==id); save();
   renderRecent();
   if(document.getElementById('page-sales').classList.contains('active')) renderSales();
@@ -573,7 +666,12 @@ const stat = (l,v,neg) => `<div class="stat${neg?' neg':''}"><div class="s-label
 function saveBatch(){
   const count = num('batchCount');
   if(count<=0){ alert('Enter the coconut count.'); return; }
-  DB.batches.unshift({ id:uid(), date:document.getElementById('batchDate').value||todayStr(), count, note:document.getElementById('batchNote').value.trim() });
+  const rec = { id:uid(), date:document.getElementById('batchDate').value||todayStr(), count, note:document.getElementById('batchNote').value.trim() };
+  if(EDITING.batch){
+    const idx = DB.batches.findIndex(x=>x.id===EDITING.batch);
+    if(idx>-1){ rec.id = EDITING.batch; DB.batches[idx] = rec; } else DB.batches.unshift(rec);
+    EDITING.batch = null; setBanner('batch','');
+  }else DB.batches.unshift(rec);
   save();
   document.getElementById('batchCount').value=''; document.getElementById('batchNote').value='';
   renderBatch();
@@ -581,13 +679,18 @@ function saveBatch(){
 function saveLabour(){
   const coconuts = num('labCoconuts'), rate = num('labRate');
   if(coconuts<=0){ alert('Enter how many coconuts were de-husked.'); return; }
-  DB.labour.unshift({ id:uid(), date:document.getElementById('labDate').value||todayStr(), persons:num('labPersons'), coconuts, rate, amount:coconuts*rate });
+  const rec = { id:uid(), date:document.getElementById('labDate').value||todayStr(), persons:num('labPersons'), coconuts, rate, amount:coconuts*rate };
+  if(EDITING.labour){
+    const idx = DB.labour.findIndex(x=>x.id===EDITING.labour);
+    if(idx>-1){ rec.id = EDITING.labour; DB.labour[idx] = rec; } else DB.labour.unshift(rec);
+    EDITING.labour = null; setBanner('labour','');
+  }else DB.labour.unshift(rec);
   save();
   document.getElementById('labCoconuts').value=''; document.getElementById('labPersons').value='';
   renderBatch();
 }
-function delBatch(id){ if(!confirm('Delete this batch?')) return; DB.batches=DB.batches.filter(b=>b.id!==id); save(); renderBatch(); }
-function delLabour(id){ if(!confirm('Delete this labour entry?')) return; DB.labour=DB.labour.filter(b=>b.id!==id); save(); renderBatch(); }
+function delBatch(id){ if(!confirm('Delete this batch?')) return; if(EDITING.batch===id) cancelEdit('batch'); DB.batches=DB.batches.filter(b=>b.id!==id); save(); renderBatch(); }
+function delLabour(id){ if(!confirm('Delete this labour entry?')) return; if(EDITING.labour===id) cancelEdit('labour'); DB.labour=DB.labour.filter(b=>b.id!==id); save(); renderBatch(); }
 
 function renderBatch(){
   document.getElementById('batchDate').value ||= todayStr();
@@ -603,12 +706,14 @@ function renderBatch(){
   document.getElementById('batchList').innerHTML = DB.batches.length ? DB.batches.map(b=>
     `<div class="list-item"><div class="li-main"><div class="li-title">${b.count.toLocaleString('en-IN')} coconuts</div>
      <div class="li-sub">${fmtDate(b.date)}${b.note?' — '+esc(b.note):''}</div></div>
+     <button class="btn-danger-sm" style="color:var(--amber);" onclick="editBatch('${b.id}')">✏️</button>
      <button class="btn-danger-sm" onclick="delBatch('${b.id}')">🗑️</button></div>`).join('')
     : '<div class="empty">No batches recorded yet.</div>';
   document.getElementById('labourList').innerHTML = DB.labour.length ? DB.labour.map(l=>
     `<div class="list-item"><div class="li-main"><div class="li-title">${l.coconuts.toLocaleString('en-IN')} coconuts de-husked</div>
      <div class="li-sub">${fmtDate(l.date)} — ${l.persons||'?'} persons @ ${inr(l.rate)}/coconut</div></div>
      <span class="li-amt" style="color:var(--red);">${inr(l.amount)}</span>
+     <button class="btn-danger-sm" style="color:var(--amber);" onclick="editLabour('${l.id}')">✏️</button>
      <button class="btn-danger-sm" onclick="delLabour('${l.id}')">🗑️</button></div>`).join('')
     : '<div class="empty">No labour charges recorded yet.</div>';
 }
@@ -618,11 +723,11 @@ function renderReport(){
   const f = document.getElementById('repFilter').value;
   const sales = DB.sales.filter(s=>inRange(s.date,f));
   const labour = DB.labour.filter(l=>inRange(l.date,f));
-  let goodKg=0, goodAmt=0, lowKg=0, lowAmt=0, kadPcs=0, kadAmt=0;
+  let goodKg=0, goodAmt=0, lowKg=0, lowAmt=0, kadPcs=0, kadAmt=0, kadLabAdj=0;
   sales.forEach(s=>s.items.forEach(i=>{
     if(i.type==='good'){ goodKg+=i.qty; goodAmt+=i.amount; }
     else if(i.type==='low'){ lowKg+=i.qty; lowAmt+=i.amount; }
-    else { kadPcs+=i.qty; kadAmt+=i.amount; }
+    else { kadPcs+=i.qty; kadAmt+=i.amount; kadLabAdj+=i.qty*(i.labRate||0); }
   }));
   const labourAmt = labour.reduce((s,l)=>s+l.amount,0);
   const revenue = goodAmt+lowAmt+kadAmt;
@@ -633,8 +738,9 @@ function renderReport(){
   const diff = kadAmt - labourAmt;
   document.getElementById('adjBox').innerHTML = `
     <div class="li-sub" style="font-size:13px; line-height:1.7;">
-      Coconut Husk (Kadambai) revenue: <b>${inr(kadAmt)}</b><br>
-      Labour charges: <b style="color:var(--red);">${inr(labourAmt)}</b><br>
+      Coconut Husk (Kadambai) revenue (net, after per-pc labour): <b>${inr(kadAmt)}</b><br>
+      ${kadLabAdj>0 ? `Labour already adjusted inside husk sales: <b style="color:var(--amber);">${inr(kadLabAdj)}</b><br>` : ''}
+      Labour charges recorded in Batch tab: <b style="color:var(--red);">${inr(labourAmt)}</b><br>
       ${diff>=0
         ? `✅ Husk sales cover labour — <b style="color:var(--green-dark);">${inr(diff)} surplus</b>.`
         : `⚠️ Husk sales do not fully cover labour — <b style="color:var(--red);">${inr(-diff)} to be paid from pocket</b>.`}
@@ -689,6 +795,51 @@ function importData(ev){
   ev.target.value = '';
 }
 
+/* ---------- Google Drive backend sync ---------- */
+const GAS_KEY = 'cst_gas_url';
+const gasUrl = () => localStorage.getItem(GAS_KEY) || '';
+function setGasStatus(msg){ document.getElementById('gasStatus').textContent = msg; }
+function saveGasUrl(){
+  const u = document.getElementById('gasUrl').value.trim();
+  if(u && !/^https:\/\/script\.google\.com\//.test(u)){ alert('That does not look like a Google Apps Script Web App URL.'); return; }
+  if(u) localStorage.setItem(GAS_KEY, u); else localStorage.removeItem(GAS_KEY);
+  setGasStatus(u ? 'URL saved. Auto-sync is ON — data uploads to your Google Sheet after every entry.' : 'Sync disconnected.');
+  if(u) syncDrive(false);
+}
+let syncTimer = null;
+function queueSync(){
+  if(!gasUrl()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(()=>syncDrive(false), 4000);
+}
+function syncDrive(manual){
+  const u = gasUrl();
+  if(!u){ if(manual) alert('Save your Apps Script URL first (see setup note above).'); return; }
+  setGasStatus('☁️ Syncing to Google Drive…');
+  fetch(u, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+             body: JSON.stringify({action:'sync', data:DB}) })
+    .then(r=>r.json())
+    .then(j=>{ if(!j.ok) throw new Error(j.error||'sync rejected');
+      setGasStatus('✅ Synced to Google Drive at ' + new Date().toTimeString().slice(0,5) + ' — all data is in your Sheet.'); })
+    .catch(()=>setGasStatus('⚠️ Sync failed — will retry after the next entry. Check internet / the URL.'));
+}
+function restoreDrive(){
+  const u = gasUrl();
+  if(!u){ alert('Save your Apps Script URL first.'); return; }
+  setGasStatus('⬇️ Loading from Google Drive…');
+  fetch(u + '?action=load')
+    .then(r=>r.json())
+    .then(j=>{
+      if(!j.ok || !j.data || !Array.isArray(j.data.sales)) throw new Error('no data');
+      if(!confirm(`Restore ${j.data.sales.length} sales from Google Drive? This replaces the data on this device.`)){ setGasStatus('Restore cancelled.'); return; }
+      DB = Object.assign(structuredClone(DEFAULTS), j.data);
+      localStorage.setItem(LS_KEY, JSON.stringify(DB));
+      applyRateDefaults(); refreshTotals(); renderRecent();
+      setGasStatus('✅ Restored from Google Drive.');
+    })
+    .catch(()=>setGasStatus('⚠️ Could not load from Drive — check the URL / internet, or no backup exists yet.'));
+}
+
 /* ---------- excel export ---------- */
 function loadSheetJS(){
   return window.XLSX ? Promise.resolve() : new Promise((res, rej)=>{
@@ -701,11 +852,11 @@ function loadSheetJS(){
 function exportExcel(){
   loadSheetJS().then(()=>{
     const wb = XLSX.utils.book_new();
-    const salesRows = [['Date','Time','Buyer','Item','Weight (kg)','Weighments','Count (pcs)','Rate (₹)','Amount (₹)','Bill Total (₹)']];
+    const salesRows = [['Date','Time','Buyer','Item','Weight (kg)','Weighments','Count (pcs)','Rate (₹)','Labour ₹/pc','Amount (₹)','Bill Total (₹)']];
     DB.sales.slice().reverse().forEach(s=>s.items.forEach((i,ix)=>{
       salesRows.push([fmtDate(s.date), s.time||'', s.buyer, i.label,
         i.unit==='kg'? i.qty : '', (i.wts&&i.wts.length)? i.wts.join(' + ') : '',
-        i.count||'', i.rate, i.amount, ix===0 ? s.total : '']);
+        i.count||'', i.rate, i.labRate||'', i.amount, ix===0 ? s.total : '']);
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(salesRows), 'Sales');
     const batchRows = [['Date','Coconut Count','Note']];
@@ -727,6 +878,8 @@ function exportExcel(){
 applyRateDefaults();
 refreshTotals();
 renderRecent();
+document.getElementById('gasUrl').value = gasUrl();
+if(gasUrl()) setGasStatus('Connected — auto-sync is ON. Data uploads to your Google Sheet after every entry.');
 </script>
 </body>
 </html>
