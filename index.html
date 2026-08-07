@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>IBI Coconut Sales Tracker</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="India Business International">
+<meta property="og:title" content="IBI Coconut Sales Tracker">
+<meta property="og:description" content="Point of Sale for fresh coconut sales by weight — two quality grades, kadambai (husk) sales, labour adjustment, live rates and buyer bills.">
+<meta property="og:url" content="https://indiabusinessinternational.github.io/CoconutSalesTracker/">
+<meta property="og:image" content="https://indiabusinessinternational.github.io/CoconutSalesTracker/og-banner.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="IBI Coconut Sales Tracker banner">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IBI Coconut Sales Tracker">
+<meta name="twitter:description" content="Point of Sale for fresh coconut sales by weight — two quality grades, kadambai sales, labour adjustment and buyer bills.">
+<meta name="twitter:image" content="https://indiabusinessinternational.github.io/CoconutSalesTracker/og-banner.png">
+<style>
+:root{
+  --green:#1b7a43; --green-dark:#12592f; --green-light:#e6f4ec;
+  --brown:#8a5a2b; --cream:#fdfaf4; --ink:#1e2b22; --muted:#6b7a70;
+  --red:#c0392b; --amber:#b7791f; --card:#ffffff; --line:#dfe8e2;
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif; background:var(--cream); color:var(--ink); padding-bottom:76px;}
+header{position:sticky; top:0; z-index:50; background:linear-gradient(135deg,var(--green-dark),var(--green)); color:#fff; padding:10px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 2px 8px rgba(0,0,0,.18);}
+.app-version-badge{background:#fff; color:var(--green-dark); font-weight:800; font-size:11px; padding:2px 8px; border-radius:999px; letter-spacing:.4px;}
+header h1{font-size:17px; font-weight:800; letter-spacing:.2px; flex:1;}
+header .logo{font-size:22px;}
+main{max-width:760px; margin:0 auto; padding:12px;}
+.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:50; background:#fff; border-top:1px solid var(--line); display:flex; box-shadow:0 -2px 10px rgba(0,0,0,.06);}
+.tabbar button{flex:1; border:0; background:none; padding:8px 2px 10px; font-size:11px; font-weight:700; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;}
+.tabbar button .ico{font-size:20px; line-height:1;}
+.tabbar button.active{color:var(--green-dark);}
+.tabbar button.active .ico{transform:scale(1.12);}
+.page{display:none;}
+.page.active{display:block; animation:fade .18s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1;}}
+.card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.card h2{font-size:14px; font-weight:800; color:var(--green-dark); margin-bottom:10px; display:flex; align-items:center; gap:6px;}
+label{display:block; font-size:12px; font-weight:700; color:var(--muted); margin:8px 0 4px;}
+input,select,textarea{width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:16px; background:#fff; color:var(--ink);}
+input:focus,select:focus{outline:none; border-color:var(--green);}
+.row{display:flex; gap:10px;}
+.row>*{flex:1; min-width:0;}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:13px; border:0; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer; margin-top:10px;}
+.btn-primary{background:var(--green); color:#fff;}
+.btn-primary:active{background:var(--green-dark);}
+.btn-dark{background:var(--ink); color:#fff;}
+.btn-outline{background:#fff; color:var(--green-dark); border:1.5px solid var(--green);}
+.btn-danger-sm{background:none; border:0; color:var(--red); font-size:16px; cursor:pointer; padding:6px;}
+.btn-sm{width:auto; padding:8px 14px; font-size:13px; margin-top:0;}
+.qsec{border:1.5px dashed var(--line); border-radius:12px; padding:10px; margin-top:10px;}
+.qsec .qtitle{font-size:13px; font-weight:800; display:flex; justify-content:space-between; align-items:center;}
+.wrow .wgt{flex:1.5;}
+.wrow .tms{flex:.9;}
+.wrow .addw{flex:.9; display:flex; align-items:flex-end;}
+.wbtn{width:100%; padding:11px 6px;}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.chips:empty{display:none;}
+.chip{display:inline-flex; align-items:center; gap:5px; background:var(--green-light); color:var(--green-dark); font-size:12.5px; font-weight:800; padding:4px 6px 4px 10px; border-radius:999px;}
+.chip button{border:0; background:none; color:var(--red); font-size:14px; font-weight:900; cursor:pointer; padding:0 4px; line-height:1;}
+.chip-sum{background:var(--green-dark); color:#fff; padding:4px 10px;}
+.qtitle .amt{color:var(--green-dark);}
+.good .qtitle span:first-child{color:var(--green-dark);}
+.low .qtitle span:first-child{color:var(--amber);}
+.kad .qtitle span:first-child{color:var(--brown);}
+.breakdown{margin-top:12px;}
+.breakdown:empty{display:none;}
+.bd-row{display:flex; justify-content:space-between; align-items:center; font-size:13.5px; font-weight:700; padding:7px 4px; border-bottom:1px dashed var(--line);}
+.bd-row .bd-l{color:var(--muted);}
+.bd-row .bd-l small{font-weight:600;}
+.bd-row .bd-v{font-weight:900; color:var(--green-dark);}
+.totalbar{background:var(--green-dark); color:#fff; border-radius:14px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; margin-top:12px;}
+.totalbar .t-label{font-size:12px; font-weight:700; opacity:.85;}
+.totalbar .t-amt{font-size:26px; font-weight:900;}
+.list-item{border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; background:#fff; display:flex; align-items:center; gap:10px;}
+.list-item .li-main{flex:1; min-width:0;}
+.li-title{font-weight:800; font-size:14px;}
+.li-sub{font-size:12px; color:var(--muted); margin-top:2px; word-wrap:break-word;}
+.li-amt{font-weight:900; font-size:15px; color:var(--green-dark); white-space:nowrap;}
+.pill{display:inline-block; font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; margin-right:4px;}
+.pill-good{background:var(--green-light); color:var(--green-dark);}
+.pill-low{background:#fdf3e3; color:var(--amber);}
+.pill-kad{background:#f3e9dd; color:var(--brown);}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.stat{background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px;}
+.stat .s-label{font-size:11px; font-weight:700; color:var(--muted);}
+.stat .s-val{font-size:19px; font-weight:900; color:var(--green-dark); margin-top:2px;}
+.stat.neg .s-val{color:var(--red);}
+.empty{text-align:center; color:var(--muted); font-size:13px; padding:24px 10px;}
+.rate-note{font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.5;}
+.modal-bg{display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:100; padding:16px; overflow-y:auto;}
+.modal-bg.open{display:flex; align-items:flex-start; justify-content:center;}
+.modal{background:#fff; border-radius:16px; width:100%; max-width:440px; margin:auto; overflow:hidden;}
+.bill-head{background:var(--green-dark); color:#fff; padding:16px; text-align:center;}
+.bill-head .b-brand{font-size:11px; letter-spacing:2px; font-weight:700; opacity:.85;}
+.bill-head .b-title{font-size:18px; font-weight:900; margin-top:2px;}
+.bill-body{padding:16px;}
+.bill-table{width:100%; border-collapse:collapse; font-size:13.5px;}
+.bill-table th{text-align:left; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); padding:6px 4px;}
+.bill-table td{padding:8px 4px; border-bottom:1px dashed var(--line);}
+.bill-table td:last-child,.bill-table th:last-child{text-align:right;}
+.bill-total{display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding:12px; background:var(--green-light); border-radius:12px;}
+.bill-total .bt-l{font-size:13px; font-weight:800; color:var(--green-dark);}
+.bill-total .bt-v{font-size:24px; font-weight:900; color:var(--green-dark);}
+.bill-meta{font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; justify-content:space-between;}
+.modal-actions{display:flex; gap:10px; padding:0 16px 16px;}
+.section-title{font-size:13px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin:16px 0 8px;}
+.filter-row{display:flex; gap:8px; margin-bottom:10px;}
+.filter-row select,.filter-row input{padding:9px 10px; font-size:14px;}
+.hint{background:#fff8e6; border:1px solid #f1e2b6; color:#7a5b12; font-size:12px; border-radius:10px; padding:10px 12px; margin-bottom:12px; line-height:1.5;}
+@media(min-width:700px){
+  .tabbar{max-width:760px; left:50%; transform:translateX(-50%); border-radius:14px 14px 0 0; border:1px solid var(--line); border-bottom:0;}
+  .stat-grid{grid-template-columns:repeat(4,1fr);}
+}
+@media print{
+  body *{visibility:hidden;}
+  .modal-bg.open,.modal-bg.open *{visibility:visible;}
+  .modal-bg.open{position:absolute; background:#fff; padding:0;}
+  .modal{box-shadow:none; max-width:100%;}
+  .modal-actions{display:none;}
+}
+</style>
+</head>
+<body>
+<header>
+  <span class="app-version-badge">v1.0</span>
+  <span class="logo">🥥</span>
+  <h1>Coconut Sales Tracker</h1>
+</header>
+
+<main>
+  <!-- ================= NEW SALE ================= -->
+  <div class="page active" id="page-sale">
+    <div class="card">
+      <h2>🧾 New Sale</h2>
+      <label for="buyerName">Buyer Name</label>
+      <input type="text" id="buyerName" placeholder="Walk-in buyer" autocomplete="off">
+
+      <div class="qsec good">
+        <div class="qtitle"><span>🥥 Good Quality (per kg)</span><span class="amt" id="amtGood">₹0</span></div>
+        <div class="row wrow">
+          <div class="wgt"><label>Weighment (kg)</label><input type="number" id="goodW" inputmode="decimal" min="0" step="0.01" placeholder="50"></div>
+          <div class="tms"><label>× Times</label><input type="number" id="goodTimes" inputmode="numeric" min="1" step="1" placeholder="1"></div>
+          <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('good')">⚖️ Add</button></div>
+        </div>
+        <div class="chips" id="goodChips"></div>
+        <div class="row">
+          <div><label>Total Weight (kg)</label><input type="number" id="goodKg" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
+          <div><label>Count (pcs)</label><input type="number" id="goodCount" inputmode="numeric" min="0" step="1" placeholder="0"></div>
+          <div><label>Rate ₹/kg</label><input type="number" id="goodRate" inputmode="decimal" min="0" step="0.5"></div>
+        </div>
+      </div>
+
+      <div class="qsec low">
+        <div class="qtitle"><span>🥥 Lower Quality (per kg)</span><span class="amt" id="amtLow">₹0</span></div>
+        <div class="row wrow">
+          <div class="wgt"><label>Weighment (kg)</label><input type="number" id="lowW" inputmode="decimal" min="0" step="0.01" placeholder="50"></div>
+          <div class="tms"><label>× Times</label><input type="number" id="lowTimes" inputmode="numeric" min="1" step="1" placeholder="1"></div>
+          <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('low')">⚖️ Add</button></div>
+        </div>
+        <div class="chips" id="lowChips"></div>
+        <div class="row">
+          <div><label>Total Weight (kg)</label><input type="number" id="lowKg" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
+          <div><label>Count (pcs)</label><input type="number" id="lowCount" inputmode="numeric" min="0" step="1" placeholder="0"></div>
+          <div><label>Rate ₹/kg</label><input type="number" id="lowRate" inputmode="decimal" min="0" step="0.5"></div>
+        </div>
+      </div>
+
+      <div class="qsec kad">
+        <div class="qtitle"><span>🌰 Kadambai (per piece)</span><span class="amt" id="amtKad">₹0</span></div>
+        <div class="row">
+          <div><label>Pieces</label><input type="number" id="kadPcs" inputmode="numeric" min="0" step="1" placeholder="0"></div>
+          <div><label>Rate ₹/pc</label><input type="number" id="kadRate" inputmode="decimal" min="0" step="0.25"></div>
+        </div>
+      </div>
+
+      <div class="breakdown" id="saleBreakdown"></div>
+      <div class="totalbar">
+        <div>
+          <div class="t-label">AMOUNT TO COLLECT</div>
+          <div class="t-amt" id="saleTotal">₹0</div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="background:#fff;" onclick="showBillPreview()">📄 Report</button>
+      </div>
+      <button class="btn btn-primary" onclick="saveSale()">💾 Save Sale</button>
+    </div>
+  </div>
+
+  <!-- ================= SALES LIST ================= -->
+  <div class="page" id="page-sales">
+    <div class="filter-row">
+      <select id="salesFilter" onchange="renderSales()">
+        <option value="today">Today</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="all" selected>All</option>
+      </select>
+    </div>
+    <div class="stat-grid" id="salesStats"></div>
+    <div class="section-title">All Sales</div>
+    <div id="salesList"></div>
+  </div>
+
+  <!-- ================= BATCH / LABOUR ================= -->
+  <div class="page" id="page-batch">
+    <div class="card">
+      <h2>📦 Coconut Batch Received</h2>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="batchDate"></div>
+        <div><label>Coconut Count</label><input type="number" id="batchCount" inputmode="numeric" min="0" step="1" placeholder="e.g. 2000"></div>
+      </div>
+      <label>Note (optional)</label>
+      <input type="text" id="batchNote" placeholder="e.g. from farm A" autocomplete="off">
+      <button class="btn btn-primary" onclick="saveBatch()">➕ Add Batch</button>
+    </div>
+
+    <div class="card">
+      <h2>💪 Labour (De-husking)</h2>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="labDate"></div>
+        <div><label>Persons</label><input type="number" id="labPersons" inputmode="numeric" min="0" step="1" placeholder="4"></div>
+      </div>
+      <div class="row">
+        <div><label>Coconuts De-husked</label><input type="number" id="labCoconuts" inputmode="numeric" min="0" step="1" placeholder="0"></div>
+        <div><label>Rate ₹/coconut</label><input type="number" id="labRate" inputmode="decimal" min="0" step="0.25"></div>
+      </div>
+      <div class="rate-note">Labour amount = coconuts × rate. Kadambai sale revenue is adjusted against labour in the Report tab.</div>
+      <button class="btn btn-primary" onclick="saveLabour()">➕ Add Labour Charge</button>
+    </div>
+
+    <div class="stat-grid" id="stockStats"></div>
+    <div class="section-title">Batches</div>
+    <div id="batchList"></div>
+    <div class="section-title">Labour Charges</div>
+    <div id="labourList"></div>
+  </div>
+
+  <!-- ================= REPORT ================= -->
+  <div class="page" id="page-report">
+    <div class="filter-row">
+      <select id="repFilter" onchange="renderReport()">
+        <option value="today">Today</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="all" selected>All</option>
+      </select>
+    </div>
+    <div class="stat-grid" id="repStats"></div>
+    <div class="card" style="margin-top:12px;">
+      <h2>⚖️ Kadambai vs Labour Adjustment</h2>
+      <div id="adjBox"></div>
+    </div>
+    <div class="card">
+      <h2>☁️ Backup (Google Drive)</h2>
+      <div class="rate-note" style="margin-top:0;">Data is stored in this phone/laptop (browser storage). Export a backup file and save it to your Google Drive; Import restores it on any device.</div>
+      <div class="row">
+        <button class="btn btn-outline" onclick="exportData()">⬇️ Export Backup</button>
+        <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import Backup</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none;" onchange="importData(event)">
+    </div>
+  </div>
+
+  <!-- ================= RATES ================= -->
+  <div class="page" id="page-rates">
+    <div class="card">
+      <h2>📈 Today's Market Rates</h2>
+      <div class="row">
+        <div><label>Good Quality ₹/kg</label><input type="number" id="rateGood" inputmode="decimal" min="0" step="0.5"></div>
+        <div><label>Lower Quality ₹/kg</label><input type="number" id="rateLow" inputmode="decimal" min="0" step="0.5"></div>
+      </div>
+      <div class="row">
+        <div><label>Kadambai ₹/piece</label><input type="number" id="rateKad" inputmode="decimal" min="0" step="0.25"></div>
+        <div><label>Labour ₹/coconut</label><input type="number" id="rateLab" inputmode="decimal" min="0" step="0.25"></div>
+      </div>
+      <div class="rate-note">Rates change with the market (e.g. ₹38/kg two months back, ₹52/kg today). Saving here updates the defaults used in New Sale — each sale can still override its own rate.</div>
+      <button class="btn btn-primary" onclick="saveRates()">💾 Save Rates</button>
+    </div>
+    <div class="section-title">Rate History</div>
+    <div id="rateHistory"></div>
+  </div>
+</main>
+
+<!-- ================= BILL MODAL ================= -->
+<div class="modal-bg" id="billModal">
+  <div class="modal">
+    <div class="bill-head">
+      <div class="b-brand">INDIA BUSINESS INTERNATIONAL</div>
+      <div class="b-title">🥥 Coconut Sale Bill</div>
+    </div>
+    <div class="bill-body">
+      <div class="bill-meta"><span id="billBuyer"></span><span id="billDate"></span></div>
+      <table class="bill-table">
+        <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+        <tbody id="billRows"></tbody>
+      </table>
+      <div class="bill-total">
+        <span class="bt-l">AMOUNT TO COLLECT</span>
+        <span class="bt-v" id="billTotal"></span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="window.print()">🖨️ Print / PDF</button>
+      <button class="btn btn-dark" onclick="closeBill()">Close</button>
+    </div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="active" data-page="sale" onclick="go('sale',this)"><span class="ico">🧾</span>New Sale</button>
+  <button data-page="sales" onclick="go('sales',this)"><span class="ico">📋</span>Sales</button>
+  <button data-page="batch" onclick="go('batch',this)"><span class="ico">📦</span>Batch</button>
+  <button data-page="report" onclick="go('report',this)"><span class="ico">📊</span>Report</button>
+  <button data-page="rates" onclick="go('rates',this)"><span class="ico">📈</span>Rates</button>
+</nav>
+
+<script>
+'use strict';
+const LS_KEY = 'cst_data_v1';
+const DEFAULTS = { rates:{good:52, low:25, kad:2, lab:2}, rateHistory:[], sales:[], batches:[], labour:[] };
+
+let DB = load();
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return structuredClone(DEFAULTS);
+    const d = JSON.parse(raw);
+    return Object.assign(structuredClone(DEFAULTS), d);
+  }catch(e){ return structuredClone(DEFAULTS); }
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+
+const inr = n => '₹' + (Math.round(n*100)/100).toLocaleString('en-IN', {maximumFractionDigits:2});
+const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fmtDate = iso => { const [y,m,d]=iso.split('-'); return d+'-'+m+'-'+y; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const num = id => { const v=parseFloat(document.getElementById(id).value); return isNaN(v)||v<0 ? 0 : v; };
+
+/* ---------- navigation ---------- */
+function go(page, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(page==='sales') renderSales();
+  if(page==='batch') renderBatch();
+  if(page==='report') renderReport();
+  if(page==='rates') renderRates();
+  window.scrollTo(0,0);
+}
+
+/* ---------- weighments (e.g. 50 kg on the scale, 10-15 times) ---------- */
+const W = { good:[], low:[] };
+function addW(q){
+  const wt = num(q+'W');
+  let times = num(q+'Times') || 1;
+  if(wt<=0){ alert('Enter the weighment (kg) first.'); return; }
+  if(times>200){ alert('Too many times — check the value.'); return; }
+  for(let i=0;i<times;i++) W[q].push(wt);
+  document.getElementById(q+'W').value=''; document.getElementById(q+'Times').value='';
+  syncW(q);
+  document.getElementById(q+'W').focus();
+}
+function removeW(q, idx){ W[q].splice(idx,1); syncW(q); }
+function syncW(q){
+  const sum = W[q].reduce((s,x)=>s+x,0);
+  document.getElementById(q+'Kg').value = W[q].length ? Math.round(sum*100)/100 : '';
+  document.getElementById(q+'Chips').innerHTML = W[q].map((x,i)=>
+    `<span class="chip">${x} kg <button type="button" onclick="removeW('${q}',${i})">×</button></span>`).join('') +
+    (W[q].length>1 ? `<span class="chip chip-sum">${W[q].length} weighments = ${Math.round(sum*100)/100} kg</span>` : '');
+  refreshTotals();
+}
+/* ---------- new sale ---------- */
+function currentItems(){
+  const items = [];
+  const gKg=num('goodKg'), gCt=num('goodCount'), gR=num('goodRate');
+  const lKg=num('lowKg'), lCt=num('lowCount'), lR=num('lowRate');
+  const kP=num('kadPcs'), kR=num('kadRate');
+  if(gKg>0) items.push({type:'good', label:'Good Quality Coconut', qty:gKg, unit:'kg', count:gCt, rate:gR, amount:gKg*gR, wts:W.good.slice()});
+  if(lKg>0) items.push({type:'low', label:'Lower Quality Coconut', qty:lKg, unit:'kg', count:lCt, rate:lR, amount:lKg*lR, wts:W.low.slice()});
+  if(kP>0) items.push({type:'kad', label:'Kadambai (husk)', qty:kP, unit:'pcs', count:kP, rate:kR, amount:kP*kR});
+  return items;
+}
+function refreshTotals(){
+  const g = num('goodKg')*num('goodRate'), l = num('lowKg')*num('lowRate'), k = num('kadPcs')*num('kadRate');
+  document.getElementById('amtGood').textContent = inr(g);
+  document.getElementById('amtLow').textContent = inr(l);
+  document.getElementById('amtKad').textContent = inr(k);
+  const rows = [];
+  if(g>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Good Quality Total <small>(${num('goodKg')} kg × ${inr(num('goodRate'))})</small></span><span class="bd-v">${inr(g)}</span></div>`);
+  if(l>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Lower Quality Total <small>(${num('lowKg')} kg × ${inr(num('lowRate'))})</small></span><span class="bd-v">${inr(l)}</span></div>`);
+  if(k>0) rows.push(`<div class="bd-row"><span class="bd-l">🌰 Kadambai Total <small>(${num('kadPcs')} pcs × ${inr(num('kadRate'))})</small></span><span class="bd-v">${inr(k)}</span></div>`);
+  document.getElementById('saleBreakdown').innerHTML = rows.join('');
+  document.getElementById('saleTotal').textContent = inr(g+l+k);
+}
+['goodKg','goodCount','goodRate','lowKg','lowCount','lowRate','kadPcs','kadRate'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', refreshTotals);
+});
+// typing the total directly clears the weighment chips (one source of truth at a time)
+['good','low'].forEach(q=>{
+  document.getElementById(q+'Kg').addEventListener('input', ()=>{
+    if(W[q].length){ W[q].length = 0; document.getElementById(q+'Chips').innerHTML=''; }
+  });
+});
+
+function saveSale(){
+  const items = currentItems();
+  if(!items.length){ alert('Enter at least one item (weight or kadambai pieces).'); return; }
+  const sale = {
+    id: uid(), date: todayStr(), time: new Date().toTimeString().slice(0,5),
+    buyer: document.getElementById('buyerName').value.trim() || 'Walk-in buyer',
+    items, total: items.reduce((s,i)=>s+i.amount,0)
+  };
+  DB.sales.unshift(sale);
+  save();
+  clearSaleForm();
+  showBill(sale);
+}
+function clearSaleForm(){
+  ['buyerName','goodKg','goodCount','goodW','goodTimes','lowKg','lowCount','lowW','lowTimes','kadPcs'].forEach(id=>document.getElementById(id).value='');
+  W.good.length = 0; W.low.length = 0;
+  document.getElementById('goodChips').innerHTML=''; document.getElementById('lowChips').innerHTML='';
+  applyRateDefaults();
+  refreshTotals();
+}
+function applyRateDefaults(){
+  document.getElementById('goodRate').value = DB.rates.good;
+  document.getElementById('lowRate').value = DB.rates.low;
+  document.getElementById('kadRate').value = DB.rates.kad;
+}
+
+/* ---------- bill ---------- */
+function showBillPreview(){
+  const items = currentItems();
+  if(!items.length){ alert('Enter at least one item to see the report.'); return; }
+  showBill({
+    date: todayStr(), time: new Date().toTimeString().slice(0,5),
+    buyer: document.getElementById('buyerName').value.trim() || 'Walk-in buyer',
+    items, total: items.reduce((s,i)=>s+i.amount,0)
+  });
+}
+function showBill(sale){
+  document.getElementById('billBuyer').textContent = '👤 ' + sale.buyer;
+  document.getElementById('billDate').textContent = fmtDate(sale.date) + ' ' + (sale.time||'');
+  document.getElementById('billRows').innerHTML = sale.items.map(i=>{
+    let sub = [];
+    if(i.wts && i.wts.length>1) sub.push(i.wts.length+' weighments');
+    if(i.count && i.unit==='kg') sub.push(i.count+' pcs');
+    const qty = i.unit==='kg' ? (i.qty+' kg' + (sub.length?`<br><small style="color:var(--muted)">${sub.join(', ')}</small>`:'')) : (i.qty+' pcs');
+    return `<tr><td>${i.label}</td><td>${qty}</td><td>${inr(i.rate)}/${i.unit==='kg'?'kg':'pc'}</td><td>${inr(i.amount)}</td></tr>`;
+  }).join('');
+  document.getElementById('billTotal').textContent = inr(sale.total);
+  document.getElementById('billModal').classList.add('open');
+}
+function closeBill(){ document.getElementById('billModal').classList.remove('open'); }
+document.getElementById('billModal').addEventListener('click', e=>{ if(e.target.id==='billModal') closeBill(); });
+
+/* ---------- filters ---------- */
+function inRange(dateISO, filter){
+  if(filter==='all') return true;
+  if(filter==='today') return dateISO===todayStr();
+  const days = parseInt(filter,10);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-days); cutoff.setHours(0,0,0,0);
+  return new Date(dateISO+'T00:00:00') >= cutoff;
+}
+
+/* ---------- sales list ---------- */
+function renderSales(){
+  const f = document.getElementById('salesFilter').value;
+  const rows = DB.sales.filter(s=>inRange(s.date,f));
+  const revenue = rows.reduce((s,x)=>s+x.total,0);
+  const kg = rows.reduce((s,x)=>s+x.items.filter(i=>i.unit==='kg').reduce((a,i)=>a+i.qty,0),0);
+  const pcsSold = rows.reduce((s,x)=>s+x.items.filter(i=>i.unit==='kg').reduce((a,i)=>a+(i.count||0),0),0);
+  const kadPcs = rows.reduce((s,x)=>s+x.items.filter(i=>i.type==='kad').reduce((a,i)=>a+i.qty,0),0);
+  document.getElementById('salesStats').innerHTML =
+    stat('Sales', rows.length) + stat('Revenue', inr(revenue)) +
+    stat('Coconut kg', kg.toLocaleString('en-IN')) + stat('Kadambai pcs', kadPcs.toLocaleString('en-IN'));
+  document.getElementById('salesList').innerHTML = rows.length ? rows.map(s=>{
+    const pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Kadambai '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
+    return `<div class="list-item">
+      <div class="li-main" onclick='showBill(${JSON.stringify(s).replace(/'/g,"&#39;")})'>
+        <div class="li-title">${esc(s.buyer)}</div>
+        <div class="li-sub">${fmtDate(s.date)} ${s.time||''} &nbsp;${pills}</div>
+      </div>
+      <span class="li-amt">${inr(s.total)}</span>
+      <button class="btn-danger-sm" onclick="delSale('${s.id}')">🗑️</button>
+    </div>`;
+  }).join('') : '<div class="empty">No sales in this period yet.</div>';
+}
+function delSale(id){
+  if(!confirm('Delete this sale?')) return;
+  DB.sales = DB.sales.filter(s=>s.id!==id); save(); renderSales();
+}
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const stat = (l,v,neg) => `<div class="stat${neg?' neg':''}"><div class="s-label">${l}</div><div class="s-val">${v}</div></div>`;
+
+/* ---------- batch & labour ---------- */
+function saveBatch(){
+  const count = num('batchCount');
+  if(count<=0){ alert('Enter the coconut count.'); return; }
+  DB.batches.unshift({ id:uid(), date:document.getElementById('batchDate').value||todayStr(), count, note:document.getElementById('batchNote').value.trim() });
+  save();
+  document.getElementById('batchCount').value=''; document.getElementById('batchNote').value='';
+  renderBatch();
+}
+function saveLabour(){
+  const coconuts = num('labCoconuts'), rate = num('labRate');
+  if(coconuts<=0){ alert('Enter how many coconuts were de-husked.'); return; }
+  DB.labour.unshift({ id:uid(), date:document.getElementById('labDate').value||todayStr(), persons:num('labPersons'), coconuts, rate, amount:coconuts*rate });
+  save();
+  document.getElementById('labCoconuts').value=''; document.getElementById('labPersons').value='';
+  renderBatch();
+}
+function delBatch(id){ if(!confirm('Delete this batch?')) return; DB.batches=DB.batches.filter(b=>b.id!==id); save(); renderBatch(); }
+function delLabour(id){ if(!confirm('Delete this labour entry?')) return; DB.labour=DB.labour.filter(b=>b.id!==id); save(); renderBatch(); }
+
+function renderBatch(){
+  document.getElementById('batchDate').value ||= todayStr();
+  document.getElementById('labDate').value ||= todayStr();
+  document.getElementById('labRate').value ||= DB.rates.lab;
+  const received = DB.batches.reduce((s,b)=>s+b.count,0);
+  const dehusked = DB.labour.reduce((s,l)=>s+l.coconuts,0);
+  const soldPcs = DB.sales.reduce((s,x)=>s+x.items.filter(i=>i.unit==='kg').reduce((a,i)=>a+(i.count||0),0),0);
+  const labourTotal = DB.labour.reduce((s,l)=>s+l.amount,0);
+  document.getElementById('stockStats').innerHTML =
+    stat('Received', received.toLocaleString('en-IN')) + stat('De-husked', dehusked.toLocaleString('en-IN')) +
+    stat('Sold (pcs)', soldPcs.toLocaleString('en-IN')) + stat('Labour Due', inr(labourTotal));
+  document.getElementById('batchList').innerHTML = DB.batches.length ? DB.batches.map(b=>
+    `<div class="list-item"><div class="li-main"><div class="li-title">${b.count.toLocaleString('en-IN')} coconuts</div>
+     <div class="li-sub">${fmtDate(b.date)}${b.note?' — '+esc(b.note):''}</div></div>
+     <button class="btn-danger-sm" onclick="delBatch('${b.id}')">🗑️</button></div>`).join('')
+    : '<div class="empty">No batches recorded yet.</div>';
+  document.getElementById('labourList').innerHTML = DB.labour.length ? DB.labour.map(l=>
+    `<div class="list-item"><div class="li-main"><div class="li-title">${l.coconuts.toLocaleString('en-IN')} coconuts de-husked</div>
+     <div class="li-sub">${fmtDate(l.date)} — ${l.persons||'?'} persons @ ${inr(l.rate)}/coconut</div></div>
+     <span class="li-amt" style="color:var(--red);">${inr(l.amount)}</span>
+     <button class="btn-danger-sm" onclick="delLabour('${l.id}')">🗑️</button></div>`).join('')
+    : '<div class="empty">No labour charges recorded yet.</div>';
+}
+
+/* ---------- report ---------- */
+function renderReport(){
+  const f = document.getElementById('repFilter').value;
+  const sales = DB.sales.filter(s=>inRange(s.date,f));
+  const labour = DB.labour.filter(l=>inRange(l.date,f));
+  let goodKg=0, goodAmt=0, lowKg=0, lowAmt=0, kadPcs=0, kadAmt=0;
+  sales.forEach(s=>s.items.forEach(i=>{
+    if(i.type==='good'){ goodKg+=i.qty; goodAmt+=i.amount; }
+    else if(i.type==='low'){ lowKg+=i.qty; lowAmt+=i.amount; }
+    else { kadPcs+=i.qty; kadAmt+=i.amount; }
+  }));
+  const labourAmt = labour.reduce((s,l)=>s+l.amount,0);
+  const revenue = goodAmt+lowAmt+kadAmt;
+  document.getElementById('repStats').innerHTML =
+    stat('Total Revenue', inr(revenue)) + stat('Good Quality', `${goodKg.toLocaleString('en-IN')} kg · ${inr(goodAmt)}`) +
+    stat('Lower Quality', `${lowKg.toLocaleString('en-IN')} kg · ${inr(lowAmt)}`) + stat('Kadambai', `${kadPcs.toLocaleString('en-IN')} pc · ${inr(kadAmt)}`) +
+    stat('Labour Cost', inr(labourAmt), true) + stat('Net (Revenue − Labour)', inr(revenue-labourAmt), revenue-labourAmt<0);
+  const diff = kadAmt - labourAmt;
+  document.getElementById('adjBox').innerHTML = `
+    <div class="li-sub" style="font-size:13px; line-height:1.7;">
+      Kadambai revenue: <b>${inr(kadAmt)}</b><br>
+      Labour charges: <b style="color:var(--red);">${inr(labourAmt)}</b><br>
+      ${diff>=0
+        ? `✅ Kadambai covers labour — <b style="color:var(--green-dark);">${inr(diff)} surplus</b>.`
+        : `⚠️ Kadambai does not fully cover labour — <b style="color:var(--red);">${inr(-diff)} to be paid from pocket</b>.`}
+    </div>`;
+}
+
+/* ---------- rates ---------- */
+function renderRates(){
+  document.getElementById('rateGood').value = DB.rates.good;
+  document.getElementById('rateLow').value = DB.rates.low;
+  document.getElementById('rateKad').value = DB.rates.kad;
+  document.getElementById('rateLab').value = DB.rates.lab;
+  document.getElementById('rateHistory').innerHTML = DB.rateHistory.length ? DB.rateHistory.map(r=>
+    `<div class="list-item"><div class="li-main"><div class="li-title">Good ${inr(r.good)}/kg · Low ${inr(r.low)}/kg</div>
+     <div class="li-sub">${fmtDate(r.date)} — Kadambai ${inr(r.kad)}/pc, Labour ${inr(r.lab)}/coconut</div></div></div>`).join('')
+    : '<div class="empty">No rate changes recorded yet.</div>';
+}
+function saveRates(){
+  const r = { good:num('rateGood'), low:num('rateLow'), kad:num('rateKad'), lab:num('rateLab') };
+  if(r.good<=0){ alert('Good quality rate is required.'); return; }
+  DB.rates = r;
+  DB.rateHistory.unshift(Object.assign({date:todayStr()}, r));
+  save();
+  applyRateDefaults(); refreshTotals(); renderRates();
+  alert('Rates saved. New Sale now uses these rates.');
+}
+
+/* ---------- backup ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'coconut-sales-backup-' + todayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const d = JSON.parse(reader.result);
+      if(!d || !Array.isArray(d.sales)) throw new Error('bad format');
+      if(!confirm(`Import backup with ${d.sales.length} sales? This replaces current data on this device.`)) return;
+      DB = Object.assign(structuredClone(DEFAULTS), d);
+      save(); applyRateDefaults(); refreshTotals();
+      alert('Backup imported successfully.');
+    }catch(e){ alert('Invalid backup file.'); }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+/* ---------- init ---------- */
+applyRateDefaults();
+refreshTotals();
+</script>
+</body>
+</html>
