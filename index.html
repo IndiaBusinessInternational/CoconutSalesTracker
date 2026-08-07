@@ -137,7 +137,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2.3</span>
+  <span class="app-version-badge">v2.4</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
   <button id="installBtn" hidden onclick="installApp()">📲 Install</button>
@@ -316,8 +316,9 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div><label>Coconut Husk | Kadambai ₹/pc</label><input type="number" id="rateKad" inputmode="decimal" min="0" step="0.25"></div>
         <div><label>Labour ₹/coconut</label><input type="number" id="rateLab" inputmode="decimal" min="0" step="0.25"></div>
       </div>
-      <div class="rate-note">Rates change with the market (e.g. ₹38/kg two months back, ₹52/kg today). Saving here updates the defaults used in New Sale — each sale can still override its own rate.</div>
-      <button class="btn btn-outline" onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('coconut price per kg today market rate Kanyakumari district Tamil Nadu'),'_blank')">🔍 Check Today's Market Rate (Google)</button>
+      <div class="rate-note">Rates change with the market. Whatever rate you last used — here or inside a new sale — stays as the default until you change it again. Lower Quality automatically follows 50% of Good Quality; type a different value to fix your own, and setting it back to exactly half re-links the 50% rule. <span id="lowAutoNote"></span></div>
+      <button class="btn btn-outline" onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('coconut price per kg today market rate Kanyakumari district Tamil Nadu'),'_blank')">🔍 Coconut Rate per kg — Google (Kanyakumari)</button>
+      <button class="btn btn-outline" onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('coconut husk kadambai price per piece today Kanyakumari district Tamil Nadu'),'_blank')">🔍 Husk | Kadambai Rate — Google (Kanyakumari)</button>
       <button class="btn btn-primary" onclick="saveRates()">💾 Save Rates</button>
     </div>
     <div class="section-title">Rate History</div>
@@ -362,7 +363,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 <script>
 'use strict';
 const LS_KEY = 'cst_data_v1';
-const DEFAULTS = { rates:{good:52, low:25, kad:2, lab:2}, rateHistory:[], sales:[], batches:[], labour:[] };
+const DEFAULTS = { ratesV:2, rates:{good:53, low:26.5, kad:1.5, lab:1.5, lowAuto:true}, rateHistory:[], sales:[], batches:[], labour:[] };
 
 let DB = load();
 function load(){
@@ -370,9 +371,18 @@ function load(){
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return structuredClone(DEFAULTS);
     const d = JSON.parse(raw);
-    return Object.assign(structuredClone(DEFAULTS), d);
+    const db = Object.assign(structuredClone(DEFAULTS), d);
+    // one-time rate baseline set on 07-08-2026: Good 53, Lower auto-50%, Husk 1.5, Labour 1.5
+    if((d.ratesV||1) < 2){
+      db.rates = {good:53, low:26.5, kad:1.5, lab:1.5, lowAuto:true};
+      const t = new Date(), ds = t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+      db.rateHistory.unshift({date:ds, good:53, low:26.5, kad:1.5, lab:1.5});
+      db.ratesV = 2;
+    }
+    return db;
   }catch(e){ return structuredClone(DEFAULTS); }
 }
+const halfOf = g => Math.round(g*50)/100;
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); queueSync(); }
 
 const inr = n => '₹' + (Math.round(n*100)/100).toLocaleString('en-IN', {maximumFractionDigits:2});
@@ -556,11 +566,30 @@ function saveSale(){
     EDITING.sale = null; setBanner('sale','');
   }else{
     DB.sales.unshift(sale);
+    adoptSaleRates(items); // a rate changed during a NEW sale becomes the default from now on
   }
   save();
   clearSaleForm();
   renderRecent();
   showBill(sale);
+}
+// "Once we change, that should remain the default price" — rates used in a new
+// sale become the standing defaults; Lower auto-follows 50% of Good until fixed.
+function adoptSaleRates(items){
+  let changed = false;
+  items.forEach(i=>{
+    if(i.type==='good' && i.rate !== DB.rates.good){
+      DB.rates.good = i.rate; changed = true;
+      if(DB.rates.lowAuto) DB.rates.low = halfOf(i.rate);
+    }else if(i.type==='low' && i.rate !== DB.rates.low){
+      DB.rates.low = i.rate; changed = true;
+      DB.rates.lowAuto = Math.abs(i.rate - halfOf(DB.rates.good)) < 0.005;
+    }else if(i.type==='kad'){
+      if(i.rate !== DB.rates.kad){ DB.rates.kad = i.rate; changed = true; }
+      if((i.labRate||0) !== DB.rates.lab){ DB.rates.lab = i.labRate||0; changed = true; }
+    }
+  });
+  if(changed) DB.rateHistory.unshift({date:todayStr(), good:DB.rates.good, low:DB.rates.low, kad:DB.rates.kad, lab:DB.rates.lab});
 }
 function clearSaleForm(){
   ['buyerName','goodKg','goodCount','lowKg','lowCount','kadPcs'].forEach(id=>document.getElementById(id).value='');
@@ -777,6 +806,9 @@ function renderRates(){
   document.getElementById('rateLow').value = DB.rates.low;
   document.getElementById('rateKad').value = DB.rates.kad;
   document.getElementById('rateLab').value = DB.rates.lab;
+  document.getElementById('lowAutoNote').innerHTML = DB.rates.lowAuto
+    ? '<b>Lower Quality is currently AUTO (50% of Good).</b>'
+    : '<b>Lower Quality is currently FIXED at your own value.</b>';
   document.getElementById('rateHistory').innerHTML = DB.rateHistory.length ? DB.rateHistory.map(r=>
     `<div class="list-item"><div class="li-main"><div class="li-title">Good ${inr(r.good)}/kg · Low ${inr(r.low)}/kg</div>
      <div class="li-sub">${fmtDate(r.date)} — Husk | Kadambai ${inr(r.kad)}/pc, Labour ${inr(r.lab)}/coconut</div></div></div>`).join('')
@@ -785,8 +817,11 @@ function renderRates(){
 function saveRates(){
   const r = { good:num('rateGood'), low:num('rateLow'), kad:num('rateKad'), lab:num('rateLab') };
   if(r.good<=0){ alert('Good quality rate is required.'); return; }
+  // Lower stays auto-linked to 50% of Good while it equals exactly half; a different value fixes it
+  r.lowAuto = Math.abs(r.low - halfOf(r.good)) < 0.005;
+  if(r.lowAuto) r.low = halfOf(r.good);
   DB.rates = r;
-  DB.rateHistory.unshift(Object.assign({date:todayStr()}, r));
+  DB.rateHistory.unshift({date:todayStr(), good:r.good, low:r.low, kad:r.kad, lab:r.lab});
   save();
   applyRateDefaults(); refreshTotals(); renderRates();
   alert('Rates saved. New Sale now uses these rates.');
