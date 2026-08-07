@@ -18,6 +18,12 @@
 <meta name="twitter:title" content="IBI Coconut Sales Tracker">
 <meta name="twitter:description" content="Point of Sale for fresh coconut sales by weight — two quality grades, kadambai sales, labour adjustment and buyer bills.">
 <meta name="twitter:image" content="https://coconut.indiabusinessinternational.online/og-banner.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12592f">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root{
   --green:#1b7a43; --green-dark:#12592f; --green-light:#e6f4ec;
@@ -130,7 +136,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2.1</span>
+  <span class="app-version-badge">v2.2</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
 </header>
@@ -178,8 +184,15 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 
       <div class="qsec kad">
         <div class="qtitle"><span>🌰 Coconut Husk | Kadambai (per piece)</span><span class="amt" id="amtKad">₹0</span></div>
+        <div class="row wrow">
+          <div class="wgt"><label>Pieces (per labourer)</label><input type="number" id="kadW" inputmode="numeric" min="0" step="1" placeholder="e.g. 120"></div>
+          <div class="tms"><label>× Times</label><input type="number" id="kadTimes" inputmode="numeric" min="1" step="1" value="1"></div>
+          <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('kad')">➕ Add</button></div>
+        </div>
+        <div class="whint" id="kadHint"></div>
+        <div class="chips" id="kadChips"></div>
         <div class="row">
-          <div><label>Pieces</label><input type="number" id="kadPcs" inputmode="numeric" min="0" step="1" placeholder="0"></div>
+          <div><label>Total Pieces</label><input type="number" id="kadPcs" inputmode="numeric" min="0" step="1" placeholder="0"></div>
           <div><label>Rate ₹/pc</label><input type="number" id="kadRate" inputmode="decimal" min="0" step="0.25"></div>
           <div><label>Labour ₹/pc (−)</label><input type="number" id="kadLab" inputmode="decimal" min="0" step="0.25"></div>
         </div>
@@ -302,6 +315,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div><label>Labour ₹/coconut</label><input type="number" id="rateLab" inputmode="decimal" min="0" step="0.25"></div>
       </div>
       <div class="rate-note">Rates change with the market (e.g. ₹38/kg two months back, ₹52/kg today). Saving here updates the defaults used in New Sale — each sale can still override its own rate.</div>
+      <button class="btn btn-outline" onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('coconut price per kg today market rate Kanyakumari district Tamil Nadu'),'_blank')">🔍 Check Today's Market Rate (Google)</button>
       <button class="btn btn-primary" onclick="saveRates()">💾 Save Rates</button>
     </div>
     <div class="section-title">Rate History</div>
@@ -381,6 +395,7 @@ function goPage(p){ go(p, document.querySelector('.tabbar button[data-page="'+p+
 
 /* ---------- editing (fix mistakes: edit / modify any record) ---------- */
 const EDITING = { sale:null, batch:null, labour:null };
+const cancelBtn = kind => `<br><button type="button" class="btn btn-dark btn-sm" style="margin-top:8px;" onclick="cancelEdit('${kind}')">❌ Cancel &amp; Exit Edit</button>`;
 function setBanner(kind, html){
   const el = document.getElementById(kind+'EditBanner');
   if(html){ el.innerHTML = html; el.style.display='block'; } else { el.style.display='none'; }
@@ -400,9 +415,10 @@ function editSale(id){
   document.getElementById('buyerName').value = s.buyer==='Walk-in buyer' ? '' : s.buyer;
   s.items.forEach(i=>{
     if(i.type==='kad'){
-      document.getElementById('kadPcs').value = i.qty;
+      W.kad = (i.wts && i.wts.length) ? i.wts.slice() : [i.qty];
       document.getElementById('kadRate').value = i.rate;
       document.getElementById('kadLab').value = i.labRate||0;
+      syncW('kad');
     }else{
       const q = i.type;
       W[q] = (i.wts && i.wts.length) ? i.wts.slice() : [i.qty];
@@ -412,7 +428,7 @@ function editSale(id){
     }
   });
   refreshTotals();
-  setBanner('sale', `✏️ Editing sale of <b>${esc(s.buyer)}</b> (${fmtDate(s.date)}). "Save Sale" will update it. <a href="#" onclick="cancelEdit('sale');return false;">Cancel</a>`);
+  setBanner('sale', `✏️ Editing sale of <b>${esc(s.buyer)}</b> (${fmtDate(s.date)}) — "Save Sale" will update it.${cancelBtn('sale')}`);
   window.scrollTo(0,0);
 }
 function editBatch(id){
@@ -422,7 +438,7 @@ function editBatch(id){
   document.getElementById('batchDate').value = b.date;
   document.getElementById('batchCount').value = b.count;
   document.getElementById('batchNote').value = b.note||'';
-  setBanner('batch', `✏️ Editing batch of ${fmtDate(b.date)}. "Add Batch" will update it. <a href="#" onclick="cancelEdit('batch');return false;">Cancel</a>`);
+  setBanner('batch', `✏️ Editing batch of ${fmtDate(b.date)} — "Add Batch" will update it.${cancelBtn('batch')}`);
   window.scrollTo(0,0);
 }
 function editLabour(id){
@@ -433,14 +449,17 @@ function editLabour(id){
   document.getElementById('labPersons').value = l.persons||'';
   document.getElementById('labCoconuts').value = l.coconuts;
   document.getElementById('labRate').value = l.rate;
-  setBanner('labour', `✏️ Editing labour entry of ${fmtDate(l.date)}. "Add Labour Charge" will update it. <a href="#" onclick="cancelEdit('labour');return false;">Cancel</a>`);
+  setBanner('labour', `✏️ Editing labour entry of ${fmtDate(l.date)} — "Add Labour Charge" will update it.${cancelBtn('labour')}`);
 }
 
-/* ---------- weighments (e.g. 50 kg on the scale, 10-15 times) ---------- */
-const W = { good:[], low:[] };
-const WDIRTY = { good:false, low:false }; // user touched the weighment fields since last Add
+/* ---------- add-up entries: weighments (50 kg × N times) & husk pieces per labourer ---------- */
+const W = { good:[], low:[], kad:[] };
+const WDIRTY = { good:false, low:false, kad:false }; // user touched the fields since last Add
+const WDEF = { good:'50', low:'50', kad:'' };        // default weighment; husk counts vary per labourer
+const wTotalId = q => q==='kad' ? 'kadPcs' : q+'Kg';
+const wUnit = q => q==='kad' ? 'pcs' : 'kg';
 function resetWFields(q){
-  document.getElementById(q+'W').value = '50';
+  document.getElementById(q+'W').value = WDEF[q];
   document.getElementById(q+'Times').value = '1';
   WDIRTY[q] = false;
 }
@@ -457,26 +476,28 @@ function addW(q){
 function removeW(q, idx){ W[q].splice(idx,1); syncW(q); }
 function wHint(q){
   const el = document.getElementById(q+'Hint');
-  el.textContent = 'ℹ️ Type each scale reading in "Weighment (kg)" and press Add — repeat for every weighing (use × Times for repeats like 50 kg × 12). Or simply type the full "Total Weight (kg)" below instead.';
+  el.textContent = q==='kad'
+    ? 'ℹ️ Type each labourer’s husk count in "Pieces (per labourer)" and press Add — one by one for all 4-5 labourers. Or simply type the full "Total Pieces" below instead.'
+    : 'ℹ️ Type each scale reading in "Weighment (kg)" and press Add — repeat for every weighing (use × Times for repeats like 50 kg × 12). Or simply type the full "Total Weight (kg)" below instead.';
   el.style.display = 'block';
   document.getElementById(q+'W').focus();
   clearTimeout(el._t); el._t = setTimeout(()=>hideHint(q), 8000);
 }
 function hideHint(q){ document.getElementById(q+'Hint').style.display='none'; }
-// a weighment the user EDITED but did not Add is included automatically on Save / Report
+// an entry the user EDITED but did not Add is included automatically on Save / Report
 // (the untouched default 50 × 1 is never flushed)
-function flushPendingW(){ ['good','low'].forEach(q=>{ if(WDIRTY[q] && num(q+'W')>0) addW(q); }); }
-['good','low'].forEach(q=>{
+function flushPendingW(){ ['good','low','kad'].forEach(q=>{ if(WDIRTY[q] && num(q+'W')>0) addW(q); }); }
+['good','low','kad'].forEach(q=>{
   ['W','Times'].forEach(sfx=>{
     document.getElementById(q+sfx).addEventListener('input', ()=>{ WDIRTY[q]=true; });
   });
 });
 function syncW(q){
-  const sum = W[q].reduce((s,x)=>s+x,0);
-  document.getElementById(q+'Kg').value = W[q].length ? Math.round(sum*100)/100 : '';
+  const sum = Math.round(W[q].reduce((s,x)=>s+x,0)*100)/100;
+  document.getElementById(wTotalId(q)).value = W[q].length ? sum : '';
   document.getElementById(q+'Chips').innerHTML = W[q].map((x,i)=>
-    `<span class="chip">${x} kg <button type="button" onclick="removeW('${q}',${i})">×</button></span>`).join('') +
-    (W[q].length>1 ? `<span class="chip chip-sum">${W[q].length} weighments = ${Math.round(sum*100)/100} kg</span>` : '');
+    `<span class="chip">${x} ${wUnit(q)} <button type="button" onclick="removeW('${q}',${i})">×</button></span>`).join('') +
+    (W[q].length>1 ? `<span class="chip chip-sum">${W[q].length} ${q==='kad'?'labourers':'weighments'} = ${sum} ${wUnit(q)}</span>` : '');
   refreshTotals();
 }
 /* ---------- new sale ---------- */
@@ -487,7 +508,7 @@ function currentItems(){
   const kP=num('kadPcs'), kR=num('kadRate'), kL=num('kadLab');
   if(gKg>0) items.push({type:'good', label:'Good Quality Coconut', qty:gKg, unit:'kg', count:gCt, rate:gR, amount:gKg*gR, wts:W.good.slice()});
   if(lKg>0) items.push({type:'low', label:'Lower Quality Coconut', qty:lKg, unit:'kg', count:lCt, rate:lR, amount:lKg*lR, wts:W.low.slice()});
-  if(kP>0) items.push({type:'kad', label:'Coconut Husk | Kadambai', qty:kP, unit:'pcs', count:kP, rate:kR, labRate:kL, amount:kP*(kR-kL)});
+  if(kP>0) items.push({type:'kad', label:'Coconut Husk | Kadambai', qty:kP, unit:'pcs', count:kP, rate:kR, labRate:kL, amount:kP*(kR-kL), wts:W.kad.slice()});
   return items;
 }
 function refreshTotals(){
@@ -510,9 +531,9 @@ function refreshTotals(){
 ['goodKg','goodCount','goodRate','lowKg','lowCount','lowRate','kadPcs','kadRate','kadLab'].forEach(id=>{
   document.getElementById(id).addEventListener('input', refreshTotals);
 });
-// typing the total directly clears the weighment chips (one source of truth at a time)
-['good','low'].forEach(q=>{
-  document.getElementById(q+'Kg').addEventListener('input', ()=>{
+// typing the total directly clears the added chips (one source of truth at a time)
+['good','low','kad'].forEach(q=>{
+  document.getElementById(wTotalId(q)).addEventListener('input', ()=>{
     if(W[q].length){ W[q].length = 0; document.getElementById(q+'Chips').innerHTML=''; }
   });
 });
@@ -541,9 +562,9 @@ function saveSale(){
 }
 function clearSaleForm(){
   ['buyerName','goodKg','goodCount','lowKg','lowCount','kadPcs'].forEach(id=>document.getElementById(id).value='');
-  W.good.length = 0; W.low.length = 0;
-  resetWFields('good'); resetWFields('low');
-  document.getElementById('goodChips').innerHTML=''; document.getElementById('lowChips').innerHTML='';
+  W.good.length = 0; W.low.length = 0; W.kad.length = 0;
+  resetWFields('good'); resetWFields('low'); resetWFields('kad');
+  document.getElementById('goodChips').innerHTML=''; document.getElementById('lowChips').innerHTML=''; document.getElementById('kadChips').innerHTML='';
   applyRateDefaults();
   refreshTotals();
 }
@@ -579,7 +600,7 @@ function shareWhatsApp(){
   s.items.forEach(i=>{
     const qty = i.unit==='kg'
       ? i.qty + ' kg' + (i.wts && i.wts.length>1 ? ' ('+i.wts.length+' weighments)' : '') + (i.count ? ', '+i.count+' pcs' : '')
-      : i.qty + ' pcs';
+      : i.qty + ' pcs' + (i.wts && i.wts.length>1 ? ' ('+i.wts.length+' labourers)' : '');
     const rateTxt = i.unit==='kg' ? inr(i.rate)+'/kg'
       : (i.labRate>0 ? '('+inr(i.rate)+' − '+inr(i.labRate)+' labour)/pc' : inr(i.rate)+'/pc');
     lines.push('*' + i.label + '*');
@@ -597,7 +618,8 @@ function showBill(sale){
     let sub = [];
     if(i.wts && i.wts.length>1) sub.push(i.wts.length+' weighments');
     if(i.count && i.unit==='kg') sub.push(i.count+' pcs');
-    const qty = i.unit==='kg' ? (i.qty+' kg' + (sub.length?`<br><small style="color:var(--muted)">${sub.join(', ')}</small>`:'')) : (i.qty+' pcs');
+    const qty = i.unit==='kg' ? (i.qty+' kg' + (sub.length?`<br><small style="color:var(--muted)">${sub.join(', ')}</small>`:''))
+      : (i.qty+' pcs' + (i.wts && i.wts.length>1 ? `<br><small style="color:var(--muted)">${i.wts.length} labourers</small>` : ''));
     const rateTxt = i.unit==='kg' ? inr(i.rate)+'/kg'
       : (i.labRate>0 ? `(${inr(i.rate)} − ${inr(i.labRate)})/pc` : inr(i.rate)+'/pc');
     return `<tr><td>${i.label}</td><td>${qty}</td><td>${rateTxt}</td><td>${inr(i.amount)}</td></tr>`;
@@ -881,6 +903,7 @@ applyRateDefaults();
 refreshTotals();
 renderRecent();
 document.getElementById('gasUrl').value = gasUrl();
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js');
 </script>
 </body>
 </html>
