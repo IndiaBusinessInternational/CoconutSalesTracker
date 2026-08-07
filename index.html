@@ -64,6 +64,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 .chip{display:inline-flex; align-items:center; gap:5px; background:var(--green-light); color:var(--green-dark); font-size:12.5px; font-weight:800; padding:4px 6px 4px 10px; border-radius:999px;}
 .chip button{border:0; background:none; color:var(--red); font-size:14px; font-weight:900; cursor:pointer; padding:0 4px; line-height:1;}
 .chip-sum{background:var(--green-dark); color:#fff; padding:4px 10px;}
+.whint{display:none; font-size:12px; font-weight:700; color:var(--amber); background:#fdf3e3; border-radius:8px; padding:7px 10px; margin-top:8px; line-height:1.5;}
 .qtitle .amt{color:var(--green-dark);}
 .good .qtitle span:first-child{color:var(--green-dark);}
 .low .qtitle span:first-child{color:var(--amber);}
@@ -128,7 +129,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v1.1</span>
+  <span class="app-version-badge">v1.2</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
 </header>
@@ -148,6 +149,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
           <div class="tms"><label>× Times</label><input type="number" id="goodTimes" inputmode="numeric" min="1" step="1" placeholder="1"></div>
           <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('good')">⚖️ Add</button></div>
         </div>
+        <div class="whint" id="goodHint"></div>
         <div class="chips" id="goodChips"></div>
         <div class="row">
           <div><label>Total Weight (kg)</label><input type="number" id="goodKg" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
@@ -163,6 +165,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
           <div class="tms"><label>× Times</label><input type="number" id="lowTimes" inputmode="numeric" min="1" step="1" placeholder="1"></div>
           <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('low')">⚖️ Add</button></div>
         </div>
+        <div class="whint" id="lowHint"></div>
         <div class="chips" id="lowChips"></div>
         <div class="row">
           <div><label>Total Weight (kg)</label><input type="number" id="lowKg" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></div>
@@ -359,14 +362,25 @@ const W = { good:[], low:[] };
 function addW(q){
   const wt = num(q+'W');
   let times = num(q+'Times') || 1;
-  if(wt<=0){ alert('Enter the weighment (kg) first.'); return; }
+  if(wt<=0){ wHint(q); return; }
   if(times>200){ alert('Too many times — check the value.'); return; }
+  hideHint(q);
   for(let i=0;i<times;i++) W[q].push(wt);
   document.getElementById(q+'W').value=''; document.getElementById(q+'Times').value='';
   syncW(q);
   document.getElementById(q+'W').focus();
 }
 function removeW(q, idx){ W[q].splice(idx,1); syncW(q); }
+function wHint(q){
+  const el = document.getElementById(q+'Hint');
+  el.textContent = 'ℹ️ Type each scale reading in "Weighment (kg)" and press Add — repeat for every weighing (use × Times for repeats like 50 kg × 12). Or simply type the full "Total Weight (kg)" below instead.';
+  el.style.display = 'block';
+  document.getElementById(q+'W').focus();
+  clearTimeout(el._t); el._t = setTimeout(()=>hideHint(q), 8000);
+}
+function hideHint(q){ document.getElementById(q+'Hint').style.display='none'; }
+// a weighment typed but not yet Added is included automatically on Save / Report
+function flushPendingW(){ ['good','low'].forEach(q=>{ if(num(q+'W')>0) addW(q); }); }
 function syncW(q){
   const sum = W[q].reduce((s,x)=>s+x,0);
   document.getElementById(q+'Kg').value = W[q].length ? Math.round(sum*100)/100 : '';
@@ -409,6 +423,7 @@ function refreshTotals(){
 });
 
 function saveSale(){
+  flushPendingW();
   const items = currentItems();
   if(!items.length){ alert('Enter at least one item (weight or kadambai pieces).'); return; }
   const sale = {
@@ -436,6 +451,7 @@ function applyRateDefaults(){
 
 /* ---------- bill ---------- */
 function showBillPreview(){
+  flushPendingW();
   const items = currentItems();
   if(!items.length){ alert('Enter at least one item to see the report.'); return; }
   showBill({
