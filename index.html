@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IBI Coconut Sales Tracker</title>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="India Business International">
@@ -109,7 +109,8 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 .bill-total .bt-l{font-size:13px; font-weight:800; color:var(--green-dark);}
 .bill-total .bt-v{font-size:24px; font-weight:900; color:var(--green-dark);}
 .bill-meta{font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; justify-content:space-between;}
-.modal-actions{display:flex; gap:10px; padding:0 16px 16px;}
+.modal-actions{display:flex; gap:10px; padding:0 16px 16px; flex-wrap:wrap;}
+.btn-wa{background:#25D366; color:#fff; flex-basis:100%;}
 .section-title{font-size:13px; font-weight:900; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin:16px 0 8px;}
 .filter-row{display:flex; gap:8px; margin-bottom:10px;}
 .filter-row select,.filter-row input{padding:9px 10px; font-size:14px;}
@@ -129,7 +130,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v1.2</span>
+  <span class="app-version-badge">v1.3</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
 </header>
@@ -145,8 +146,8 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
       <div class="qsec good">
         <div class="qtitle"><span>🥥 Good Quality (per kg)</span><span class="amt" id="amtGood">₹0</span></div>
         <div class="row wrow">
-          <div class="wgt"><label>Weighment (kg)</label><input type="number" id="goodW" inputmode="decimal" min="0" step="0.01" placeholder="50"></div>
-          <div class="tms"><label>× Times</label><input type="number" id="goodTimes" inputmode="numeric" min="1" step="1" placeholder="1"></div>
+          <div class="wgt"><label>Weighment (kg)</label><input type="number" id="goodW" inputmode="decimal" min="0" step="0.01" value="50"></div>
+          <div class="tms"><label>× Times</label><input type="number" id="goodTimes" inputmode="numeric" min="1" step="1" value="1"></div>
           <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('good')">⚖️ Add</button></div>
         </div>
         <div class="whint" id="goodHint"></div>
@@ -161,8 +162,8 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
       <div class="qsec low">
         <div class="qtitle"><span>🥥 Lower Quality (per kg)</span><span class="amt" id="amtLow">₹0</span></div>
         <div class="row wrow">
-          <div class="wgt"><label>Weighment (kg)</label><input type="number" id="lowW" inputmode="decimal" min="0" step="0.01" placeholder="50"></div>
-          <div class="tms"><label>× Times</label><input type="number" id="lowTimes" inputmode="numeric" min="1" step="1" placeholder="1"></div>
+          <div class="wgt"><label>Weighment (kg)</label><input type="number" id="lowW" inputmode="decimal" min="0" step="0.01" value="50"></div>
+          <div class="tms"><label>× Times</label><input type="number" id="lowTimes" inputmode="numeric" min="1" step="1" value="1"></div>
           <div class="addw"><button type="button" class="btn btn-primary btn-sm wbtn" onclick="addW('low')">⚖️ Add</button></div>
         </div>
         <div class="whint" id="lowHint"></div>
@@ -192,6 +193,8 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
       </div>
       <button class="btn btn-primary" onclick="saveSale()">💾 Save Sale</button>
     </div>
+    <div class="section-title">Today's Sales</div>
+    <div id="recentSales"></div>
   </div>
 
   <!-- ================= SALES LIST ================= -->
@@ -259,8 +262,9 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
       <div id="adjBox"></div>
     </div>
     <div class="card">
-      <h2>☁️ Backup (Google Drive)</h2>
-      <div class="rate-note" style="margin-top:0;">Data is stored in this phone/laptop (browser storage). Export a backup file and save it to your Google Drive; Import restores it on any device.</div>
+      <h2>☁️ Save Data (Excel & Google Drive)</h2>
+      <div class="rate-note" style="margin-top:0;">Data is stored in this phone/laptop (browser storage). Save it as an Excel sheet (goes to your Downloads — move it to Google Drive if you like). Backup/Import moves the app's full data between devices.</div>
+      <button class="btn btn-primary" onclick="exportExcel()">📊 Save as Excel Sheet (.xlsx)</button>
       <div class="row">
         <button class="btn btn-outline" onclick="exportData()">⬇️ Export Backup</button>
         <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import Backup</button>
@@ -308,6 +312,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
       </div>
     </div>
     <div class="modal-actions">
+      <button class="btn btn-wa" onclick="shareWhatsApp()">📲 Share on WhatsApp</button>
       <button class="btn btn-outline" onclick="window.print()">🖨️ Print / PDF</button>
       <button class="btn btn-dark" onclick="closeBill()">Close</button>
     </div>
@@ -359,6 +364,12 @@ function go(page, btn){
 
 /* ---------- weighments (e.g. 50 kg on the scale, 10-15 times) ---------- */
 const W = { good:[], low:[] };
+const WDIRTY = { good:false, low:false }; // user touched the weighment fields since last Add
+function resetWFields(q){
+  document.getElementById(q+'W').value = '50';
+  document.getElementById(q+'Times').value = '1';
+  WDIRTY[q] = false;
+}
 function addW(q){
   const wt = num(q+'W');
   let times = num(q+'Times') || 1;
@@ -366,9 +377,8 @@ function addW(q){
   if(times>200){ alert('Too many times — check the value.'); return; }
   hideHint(q);
   for(let i=0;i<times;i++) W[q].push(wt);
-  document.getElementById(q+'W').value=''; document.getElementById(q+'Times').value='';
+  resetWFields(q);
   syncW(q);
-  document.getElementById(q+'W').focus();
 }
 function removeW(q, idx){ W[q].splice(idx,1); syncW(q); }
 function wHint(q){
@@ -379,8 +389,14 @@ function wHint(q){
   clearTimeout(el._t); el._t = setTimeout(()=>hideHint(q), 8000);
 }
 function hideHint(q){ document.getElementById(q+'Hint').style.display='none'; }
-// a weighment typed but not yet Added is included automatically on Save / Report
-function flushPendingW(){ ['good','low'].forEach(q=>{ if(num(q+'W')>0) addW(q); }); }
+// a weighment the user EDITED but did not Add is included automatically on Save / Report
+// (the untouched default 50 × 1 is never flushed)
+function flushPendingW(){ ['good','low'].forEach(q=>{ if(WDIRTY[q] && num(q+'W')>0) addW(q); }); }
+['good','low'].forEach(q=>{
+  ['W','Times'].forEach(sfx=>{
+    document.getElementById(q+sfx).addEventListener('input', ()=>{ WDIRTY[q]=true; });
+  });
+});
 function syncW(q){
   const sum = W[q].reduce((s,x)=>s+x,0);
   document.getElementById(q+'Kg').value = W[q].length ? Math.round(sum*100)/100 : '';
@@ -434,11 +450,13 @@ function saveSale(){
   DB.sales.unshift(sale);
   save();
   clearSaleForm();
+  renderRecent();
   showBill(sale);
 }
 function clearSaleForm(){
-  ['buyerName','goodKg','goodCount','goodW','goodTimes','lowKg','lowCount','lowW','lowTimes','kadPcs'].forEach(id=>document.getElementById(id).value='');
+  ['buyerName','goodKg','goodCount','lowKg','lowCount','kadPcs'].forEach(id=>document.getElementById(id).value='');
   W.good.length = 0; W.low.length = 0;
+  resetWFields('good'); resetWFields('low');
   document.getElementById('goodChips').innerHTML=''; document.getElementById('lowChips').innerHTML='';
   applyRateDefaults();
   refreshTotals();
@@ -460,7 +478,30 @@ function showBillPreview(){
     items, total: items.reduce((s,i)=>s+i.amount,0)
   });
 }
+let CURRENT_BILL = null;
+function shareWhatsApp(){
+  if(!CURRENT_BILL) return;
+  const s = CURRENT_BILL;
+  const lines = [
+    '🥥 *COCONUT SALE BILL*',
+    '_India Business International_',
+    '👤 ' + s.buyer,
+    '📅 ' + fmtDate(s.date) + ' ' + (s.time||''),
+    '--------------------------------'
+  ];
+  s.items.forEach(i=>{
+    const qty = i.unit==='kg'
+      ? i.qty + ' kg' + (i.wts && i.wts.length>1 ? ' ('+i.wts.length+' weighments)' : '') + (i.count ? ', '+i.count+' pcs' : '')
+      : i.qty + ' pcs';
+    lines.push('*' + i.label + '*');
+    lines.push('  ' + qty + ' × ' + inr(i.rate) + '/' + (i.unit==='kg'?'kg':'pc') + ' = ' + inr(i.amount));
+  });
+  lines.push('--------------------------------');
+  lines.push('💰 *AMOUNT TO COLLECT: ' + inr(s.total) + '*');
+  window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+}
 function showBill(sale){
+  CURRENT_BILL = sale;
   document.getElementById('billBuyer').textContent = '👤 ' + sale.buyer;
   document.getElementById('billDate').textContent = fmtDate(sale.date) + ' ' + (sale.time||'');
   document.getElementById('billRows').innerHTML = sale.items.map(i=>{
@@ -496,21 +537,34 @@ function renderSales(){
   document.getElementById('salesStats').innerHTML =
     stat('Sales', rows.length) + stat('Revenue', inr(revenue)) +
     stat('Coconut kg', kg.toLocaleString('en-IN')) + stat('Kadambai pcs', kadPcs.toLocaleString('en-IN'));
-  document.getElementById('salesList').innerHTML = rows.length ? rows.map(s=>{
-    const pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Kadambai '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
-    return `<div class="list-item">
-      <div class="li-main" onclick='showBill(${JSON.stringify(s).replace(/'/g,"&#39;")})'>
-        <div class="li-title">${esc(s.buyer)}</div>
-        <div class="li-sub">${fmtDate(s.date)} ${s.time||''} &nbsp;${pills}</div>
-      </div>
-      <span class="li-amt">${inr(s.total)}</span>
-      <button class="btn-danger-sm" onclick="delSale('${s.id}')">🗑️</button>
-    </div>`;
-  }).join('') : '<div class="empty">No sales in this period yet.</div>';
+  document.getElementById('salesList').innerHTML = rows.length ? rows.map(saleRowHTML).join('')
+    : '<div class="empty">No sales in this period yet.</div>';
+}
+function saleRowHTML(s){
+  const pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Kadambai '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
+  return `<div class="list-item">
+    <div class="li-main" onclick="openSaleBill('${s.id}')">
+      <div class="li-title">${esc(s.buyer)}</div>
+      <div class="li-sub">${fmtDate(s.date)} ${s.time||''} &nbsp;${pills}</div>
+    </div>
+    <span class="li-amt">${inr(s.total)}</span>
+    <button class="btn-danger-sm" onclick="delSale('${s.id}')">🗑️</button>
+  </div>`;
+}
+function openSaleBill(id){
+  const s = DB.sales.find(x=>x.id===id);
+  if(s) showBill(s);
+}
+function renderRecent(){
+  const rows = DB.sales.filter(s=>s.date===todayStr());
+  document.getElementById('recentSales').innerHTML = rows.length ? rows.map(saleRowHTML).join('')
+    : '<div class="empty">No sales yet today — saved sales appear here one by one.</div>';
 }
 function delSale(id){
   if(!confirm('Delete this sale?')) return;
-  DB.sales = DB.sales.filter(s=>s.id!==id); save(); renderSales();
+  DB.sales = DB.sales.filter(s=>s.id!==id); save();
+  renderRecent();
+  if(document.getElementById('page-sales').classList.contains('active')) renderSales();
 }
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const stat = (l,v,neg) => `<div class="stat${neg?' neg':''}"><div class="s-label">${l}</div><div class="s-val">${v}</div></div>`;
@@ -635,9 +689,44 @@ function importData(ev){
   ev.target.value = '';
 }
 
+/* ---------- excel export ---------- */
+function loadSheetJS(){
+  return window.XLSX ? Promise.resolve() : new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = res; s.onerror = ()=>rej(new Error('offline'));
+    document.head.appendChild(s);
+  });
+}
+function exportExcel(){
+  loadSheetJS().then(()=>{
+    const wb = XLSX.utils.book_new();
+    const salesRows = [['Date','Time','Buyer','Item','Weight (kg)','Weighments','Count (pcs)','Rate (₹)','Amount (₹)','Bill Total (₹)']];
+    DB.sales.slice().reverse().forEach(s=>s.items.forEach((i,ix)=>{
+      salesRows.push([fmtDate(s.date), s.time||'', s.buyer, i.label,
+        i.unit==='kg'? i.qty : '', (i.wts&&i.wts.length)? i.wts.join(' + ') : '',
+        i.count||'', i.rate, i.amount, ix===0 ? s.total : '']);
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(salesRows), 'Sales');
+    const batchRows = [['Date','Coconut Count','Note']];
+    DB.batches.slice().reverse().forEach(b=>batchRows.push([fmtDate(b.date), b.count, b.note||'']));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(batchRows), 'Batches');
+    const labRows = [['Date','Persons','Coconuts De-husked','Rate per Coconut (₹)','Amount (₹)']];
+    DB.labour.slice().reverse().forEach(l=>labRows.push([fmtDate(l.date), l.persons||'', l.coconuts, l.rate, l.amount]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(labRows), 'Labour');
+    const rateRows = [['Date','Good ₹/kg','Lower ₹/kg','Kadambai ₹/pc','Labour ₹/coconut']];
+    DB.rateHistory.slice().reverse().forEach(r=>rateRows.push([fmtDate(r.date), r.good, r.low, r.kad, r.lab]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rateRows), 'Rates');
+    XLSX.writeFile(wb, 'coconut-sales-' + todayStr() + '.xlsx');
+  }).catch(()=>{
+    alert('Excel export needs internet the first time (to load the Excel library). Please try again when online, or use Export Backup.');
+  });
+}
+
 /* ---------- init ---------- */
 applyRateDefaults();
 refreshTotals();
+renderRecent();
 </script>
 </body>
 </html>
