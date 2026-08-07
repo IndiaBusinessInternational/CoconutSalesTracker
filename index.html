@@ -130,7 +130,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v1.3</span>
+  <span class="app-version-badge">v1.4</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
 </header>
@@ -176,7 +176,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
       </div>
 
       <div class="qsec kad">
-        <div class="qtitle"><span>🌰 Kadambai (per piece)</span><span class="amt" id="amtKad">₹0</span></div>
+        <div class="qtitle"><span>🌰 Coconut Husk | Kadambai (per piece)</span><span class="amt" id="amtKad">₹0</span></div>
         <div class="row">
           <div><label>Pieces</label><input type="number" id="kadPcs" inputmode="numeric" min="0" step="1" placeholder="0"></div>
           <div><label>Rate ₹/pc</label><input type="number" id="kadRate" inputmode="decimal" min="0" step="0.25"></div>
@@ -235,7 +235,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div><label>Coconuts De-husked</label><input type="number" id="labCoconuts" inputmode="numeric" min="0" step="1" placeholder="0"></div>
         <div><label>Rate ₹/coconut</label><input type="number" id="labRate" inputmode="decimal" min="0" step="0.25"></div>
       </div>
-      <div class="rate-note">Labour amount = coconuts × rate. Kadambai sale revenue is adjusted against labour in the Report tab.</div>
+      <div class="rate-note">Labour amount = coconuts × rate. Coconut Husk (Kadambai) sale revenue is adjusted against labour in the Report tab.</div>
       <button class="btn btn-primary" onclick="saveLabour()">➕ Add Labour Charge</button>
     </div>
 
@@ -258,7 +258,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
     </div>
     <div class="stat-grid" id="repStats"></div>
     <div class="card" style="margin-top:12px;">
-      <h2>⚖️ Kadambai vs Labour Adjustment</h2>
+      <h2>⚖️ Coconut Husk (Kadambai) vs Labour Adjustment</h2>
       <div id="adjBox"></div>
     </div>
     <div class="card">
@@ -282,7 +282,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div><label>Lower Quality ₹/kg</label><input type="number" id="rateLow" inputmode="decimal" min="0" step="0.5"></div>
       </div>
       <div class="row">
-        <div><label>Kadambai ₹/piece</label><input type="number" id="rateKad" inputmode="decimal" min="0" step="0.25"></div>
+        <div><label>Coconut Husk | Kadambai ₹/pc</label><input type="number" id="rateKad" inputmode="decimal" min="0" step="0.25"></div>
         <div><label>Labour ₹/coconut</label><input type="number" id="rateLab" inputmode="decimal" min="0" step="0.25"></div>
       </div>
       <div class="rate-note">Rates change with the market (e.g. ₹38/kg two months back, ₹52/kg today). Saving here updates the defaults used in New Sale — each sale can still override its own rate.</div>
@@ -413,7 +413,7 @@ function currentItems(){
   const kP=num('kadPcs'), kR=num('kadRate');
   if(gKg>0) items.push({type:'good', label:'Good Quality Coconut', qty:gKg, unit:'kg', count:gCt, rate:gR, amount:gKg*gR, wts:W.good.slice()});
   if(lKg>0) items.push({type:'low', label:'Lower Quality Coconut', qty:lKg, unit:'kg', count:lCt, rate:lR, amount:lKg*lR, wts:W.low.slice()});
-  if(kP>0) items.push({type:'kad', label:'Kadambai (husk)', qty:kP, unit:'pcs', count:kP, rate:kR, amount:kP*kR});
+  if(kP>0) items.push({type:'kad', label:'Coconut Husk | Kadambai', qty:kP, unit:'pcs', count:kP, rate:kR, amount:kP*kR});
   return items;
 }
 function refreshTotals(){
@@ -424,7 +424,7 @@ function refreshTotals(){
   const rows = [];
   if(g>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Good Quality Total <small>(${num('goodKg')} kg × ${inr(num('goodRate'))})</small></span><span class="bd-v">${inr(g)}</span></div>`);
   if(l>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Lower Quality Total <small>(${num('lowKg')} kg × ${inr(num('lowRate'))})</small></span><span class="bd-v">${inr(l)}</span></div>`);
-  if(k>0) rows.push(`<div class="bd-row"><span class="bd-l">🌰 Kadambai Total <small>(${num('kadPcs')} pcs × ${inr(num('kadRate'))})</small></span><span class="bd-v">${inr(k)}</span></div>`);
+  if(k>0) rows.push(`<div class="bd-row"><span class="bd-l">🌰 Coconut Husk | Kadambai Total <small>(${num('kadPcs')} pcs × ${inr(num('kadRate'))})</small></span><span class="bd-v">${inr(k)}</span></div>`);
   document.getElementById('saleBreakdown').innerHTML = rows.join('');
   document.getElementById('saleTotal').textContent = inr(g+l+k);
 }
@@ -536,12 +536,12 @@ function renderSales(){
   const kadPcs = rows.reduce((s,x)=>s+x.items.filter(i=>i.type==='kad').reduce((a,i)=>a+i.qty,0),0);
   document.getElementById('salesStats').innerHTML =
     stat('Sales', rows.length) + stat('Revenue', inr(revenue)) +
-    stat('Coconut kg', kg.toLocaleString('en-IN')) + stat('Kadambai pcs', kadPcs.toLocaleString('en-IN'));
+    stat('Coconut kg', kg.toLocaleString('en-IN')) + stat('Husk | Kadambai pcs', kadPcs.toLocaleString('en-IN'));
   document.getElementById('salesList').innerHTML = rows.length ? rows.map(saleRowHTML).join('')
     : '<div class="empty">No sales in this period yet.</div>';
 }
 function saleRowHTML(s){
-  const pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Kadambai '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
+  const pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Husk '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
   return `<div class="list-item">
     <div class="li-main" onclick="openSaleBill('${s.id}')">
       <div class="li-title">${esc(s.buyer)}</div>
@@ -628,16 +628,16 @@ function renderReport(){
   const revenue = goodAmt+lowAmt+kadAmt;
   document.getElementById('repStats').innerHTML =
     stat('Total Revenue', inr(revenue)) + stat('Good Quality', `${goodKg.toLocaleString('en-IN')} kg · ${inr(goodAmt)}`) +
-    stat('Lower Quality', `${lowKg.toLocaleString('en-IN')} kg · ${inr(lowAmt)}`) + stat('Kadambai', `${kadPcs.toLocaleString('en-IN')} pc · ${inr(kadAmt)}`) +
+    stat('Lower Quality', `${lowKg.toLocaleString('en-IN')} kg · ${inr(lowAmt)}`) + stat('Coconut Husk | Kadambai', `${kadPcs.toLocaleString('en-IN')} pc · ${inr(kadAmt)}`) +
     stat('Labour Cost', inr(labourAmt), true) + stat('Net (Revenue − Labour)', inr(revenue-labourAmt), revenue-labourAmt<0);
   const diff = kadAmt - labourAmt;
   document.getElementById('adjBox').innerHTML = `
     <div class="li-sub" style="font-size:13px; line-height:1.7;">
-      Kadambai revenue: <b>${inr(kadAmt)}</b><br>
+      Coconut Husk (Kadambai) revenue: <b>${inr(kadAmt)}</b><br>
       Labour charges: <b style="color:var(--red);">${inr(labourAmt)}</b><br>
       ${diff>=0
-        ? `✅ Kadambai covers labour — <b style="color:var(--green-dark);">${inr(diff)} surplus</b>.`
-        : `⚠️ Kadambai does not fully cover labour — <b style="color:var(--red);">${inr(-diff)} to be paid from pocket</b>.`}
+        ? `✅ Husk sales cover labour — <b style="color:var(--green-dark);">${inr(diff)} surplus</b>.`
+        : `⚠️ Husk sales do not fully cover labour — <b style="color:var(--red);">${inr(-diff)} to be paid from pocket</b>.`}
     </div>`;
 }
 
@@ -649,7 +649,7 @@ function renderRates(){
   document.getElementById('rateLab').value = DB.rates.lab;
   document.getElementById('rateHistory').innerHTML = DB.rateHistory.length ? DB.rateHistory.map(r=>
     `<div class="list-item"><div class="li-main"><div class="li-title">Good ${inr(r.good)}/kg · Low ${inr(r.low)}/kg</div>
-     <div class="li-sub">${fmtDate(r.date)} — Kadambai ${inr(r.kad)}/pc, Labour ${inr(r.lab)}/coconut</div></div></div>`).join('')
+     <div class="li-sub">${fmtDate(r.date)} — Husk | Kadambai ${inr(r.kad)}/pc, Labour ${inr(r.lab)}/coconut</div></div></div>`).join('')
     : '<div class="empty">No rate changes recorded yet.</div>';
 }
 function saveRates(){
