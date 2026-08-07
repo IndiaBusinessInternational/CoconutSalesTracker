@@ -130,7 +130,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2</span>
+  <span class="app-version-badge">v2.1</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
 </header>
@@ -278,7 +278,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
     </div>
     <div class="card">
       <h2>🟢 Google Drive Backend (Auto-Sync)</h2>
-      <div class="rate-note" style="margin-top:0;" id="gasStatus">Not connected. One-time setup: create a Google Sheet in your Drive → Extensions → Apps Script → paste the Code.gs from the repo → Deploy as Web App (Execute as Me, Access: Anyone) → paste the /exec URL here. After that every entry auto-saves to the Sheet.</div>
+      <div class="rate-note" style="margin-top:0;" id="gasStatus">Connected — auto-sync is ON. Every entry auto-saves to the "Coconut Sales Tracker" Google Sheet in your Drive.</div>
       <label>Apps Script Web App URL</label>
       <input type="url" id="gasUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
       <div class="row">
@@ -797,14 +797,16 @@ function importData(ev){
 
 /* ---------- Google Drive backend sync ---------- */
 const GAS_KEY = 'cst_gas_url';
-const gasUrl = () => localStorage.getItem(GAS_KEY) || '';
+const GAS_DEFAULT = 'https://script.google.com/macros/s/AKfycbxmorv0tMEFdxi_TvrnMRXGgEDES4eglK_mqTn14PO-OpVE5EnTqqRXaULQRYRmsOfytw/exec';
+const gasUrl = () => localStorage.getItem(GAS_KEY) || GAS_DEFAULT;
 function setGasStatus(msg){ document.getElementById('gasStatus').textContent = msg; }
 function saveGasUrl(){
   const u = document.getElementById('gasUrl').value.trim();
   if(u && !/^https:\/\/script\.google\.com\//.test(u)){ alert('That does not look like a Google Apps Script Web App URL.'); return; }
   if(u) localStorage.setItem(GAS_KEY, u); else localStorage.removeItem(GAS_KEY);
-  setGasStatus(u ? 'URL saved. Auto-sync is ON — data uploads to your Google Sheet after every entry.' : 'Sync disconnected.');
-  if(u) syncDrive(false);
+  setGasStatus(u ? 'URL saved. Auto-sync is ON — data uploads to your Google Sheet after every entry.'
+                 : 'Using the built-in backend URL. Auto-sync is ON.');
+  syncDrive(false);
 }
 let syncTimer = null;
 function queueSync(){
@@ -879,7 +881,6 @@ applyRateDefaults();
 refreshTotals();
 renderRecent();
 document.getElementById('gasUrl').value = gasUrl();
-if(gasUrl()) setGasStatus('Connected — auto-sync is ON. Data uploads to your Google Sheet after every entry.');
 </script>
 </body>
 </html>
