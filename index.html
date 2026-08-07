@@ -137,7 +137,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2.4</span>
+  <span class="app-version-badge">v2.5</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
   <button id="installBtn" hidden onclick="installApp()">📲 Install</button>
@@ -201,6 +201,16 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div class="rate-note" id="kadNet">Labour charge per piece is subtracted from the husk rate — e.g. rate ₹3 − labour ₹1 = ₹2/pc paid to us.</div>
       </div>
 
+      <div class="qsec pay">
+        <div class="qtitle"><span>💳 Payment</span><span class="amt" id="amtBal"></span></div>
+        <div class="row">
+          <div><label>Mode</label><select id="payMode">
+            <option>GPay / UPI</option><option>Cash</option><option>Card / Bank</option><option>Pending</option>
+          </select></div>
+          <div><label>Paid Amount ₹</label><input type="number" id="payAmt" inputmode="decimal" min="0" step="0.5"></div>
+          <div><label>Date</label><input type="date" id="payDate"></div>
+        </div>
+      </div>
       <div class="breakdown" id="saleBreakdown"></div>
       <div class="totalbar">
         <div>
@@ -316,6 +326,8 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <div><label>Coconut Husk | Kadambai ₹/pc</label><input type="number" id="rateKad" inputmode="decimal" min="0" step="0.25"></div>
         <div><label>Labour ₹/coconut</label><input type="number" id="rateLab" inputmode="decimal" min="0" step="0.25"></div>
       </div>
+      <label>Your UPI ID (GPay) — for payment links &amp; QR on bills</label>
+      <input type="text" id="upiId" placeholder="name@okicici" autocomplete="off">
       <div class="rate-note">Rates change with the market. Whatever rate you last used — here or inside a new sale — stays as the default until you change it again. Lower Quality automatically follows 50% of Good Quality; type a different value to fix your own, and setting it back to exactly half re-links the 50% rule. <span id="lowAutoNote"></span></div>
       <button class="btn btn-outline" onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('coconut price per kg today market rate Kanyakumari district Tamil Nadu'),'_blank')">🔍 Coconut Rate per kg — Google (Kanyakumari)</button>
       <button class="btn btn-outline" onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('coconut husk kadambai price per piece today Kanyakumari district Tamil Nadu'),'_blank')">🔍 Husk | Kadambai Rate — Google (Kanyakumari)</button>
@@ -343,9 +355,12 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
         <span class="bt-l">AMOUNT TO COLLECT</span>
         <span class="bt-v" id="billTotal"></span>
       </div>
+      <div id="billPayInfo" style="font-size:13px; margin-top:10px; line-height:1.7;"></div>
+      <div id="gpayBox" style="display:none; text-align:center; margin-top:12px; border-top:1px dashed var(--line); padding-top:12px;"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-wa" onclick="shareWhatsApp()">📲 Share on WhatsApp</button>
+      <button class="btn btn-outline" onclick="showGpay()">💳 GPay QR / Link</button>
       <button class="btn btn-outline" onclick="window.print()">🖨️ Print / PDF</button>
       <button class="btn btn-dark" onclick="closeBill()">Close</button>
     </div>
@@ -363,7 +378,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 <script>
 'use strict';
 const LS_KEY = 'cst_data_v1';
-const DEFAULTS = { ratesV:2, rates:{good:53, low:26.5, kad:1.5, lab:1.5, lowAuto:true}, rateHistory:[], sales:[], batches:[], labour:[] };
+const DEFAULTS = { ratesV:2, upi:'indiabusinessinternational@okicici', rates:{good:53, low:26.5, kad:1.5, lab:1.5, lowAuto:true}, rateHistory:[], sales:[], batches:[], labour:[] };
 
 let DB = load();
 function load(){
@@ -439,6 +454,12 @@ function editSale(id){
       syncW(q);
     }
   });
+  if(s.payment){
+    document.getElementById('payMode').value = s.payment.mode;
+    document.getElementById('payAmt').value = s.payment.paid;
+    document.getElementById('payDate').value = s.payment.date;
+    PAYDIRTY = true; // keep the recorded paid amount, don't auto-follow the total
+  }
   refreshTotals();
   setBanner('sale', `✏️ Editing sale of <b>${esc(s.buyer)}</b> (${fmtDate(s.date)}) — "Save Sale" will update it.${cancelBtn('sale')}`);
   window.scrollTo(0,0);
@@ -538,8 +559,22 @@ function refreshTotals(){
   if(l>0) rows.push(`<div class="bd-row"><span class="bd-l">🥥 Lower Quality Total <small>(${num('lowKg')} kg × ${inr(num('lowRate'))})</small></span><span class="bd-v">${inr(l)}</span></div>`);
   if(num('kadPcs')>0) rows.push(`<div class="bd-row"><span class="bd-l">🌰 Coconut Husk | Kadambai Total <small>(${num('kadPcs')} pcs × ${num('kadLab')>0 ? '('+inr(num('kadRate'))+' − '+inr(num('kadLab'))+' labour)' : inr(num('kadRate'))})</small></span><span class="bd-v"${k<0?' style="color:var(--red)"':''}>${inr(k)}</span></div>`);
   document.getElementById('saleBreakdown').innerHTML = rows.join('');
-  document.getElementById('saleTotal').textContent = inr(g+l+k);
+  const t = g+l+k;
+  document.getElementById('saleTotal').textContent = inr(t);
+  // paid amount follows the bill total until the user edits it (or marks Pending)
+  if(!PAYDIRTY){
+    document.getElementById('payAmt').value = document.getElementById('payMode').value==='Pending' ? 0 : (t>0 ? Math.round(t*100)/100 : '');
+  }
+  const bal = Math.round((t - num('payAmt'))*100)/100;
+  document.getElementById('amtBal').textContent = t>0 ? (bal>0 ? 'Balance ₹'+bal.toLocaleString('en-IN') : '✅ Fully paid') : '';
+  document.getElementById('amtBal').style.color = bal>0 ? 'var(--red)' : 'var(--green-dark)';
 }
+let PAYDIRTY = false;
+document.getElementById('payAmt').addEventListener('input', ()=>{ PAYDIRTY = true; refreshTotals(); });
+document.getElementById('payMode').addEventListener('change', ()=>{
+  if(document.getElementById('payMode').value==='Pending'){ PAYDIRTY = true; document.getElementById('payAmt').value = 0; }
+  refreshTotals();
+});
 ['goodKg','goodCount','goodRate','lowKg','lowCount','lowRate','kadPcs','kadRate','kadLab'].forEach(id=>{
   document.getElementById(id).addEventListener('input', refreshTotals);
 });
@@ -557,7 +592,8 @@ function saveSale(){
   const sale = {
     id: uid(), date: todayStr(), time: new Date().toTimeString().slice(0,5),
     buyer: document.getElementById('buyerName').value.trim() || 'Walk-in buyer',
-    items, total: items.reduce((s,i)=>s+i.amount,0)
+    items, total: items.reduce((s,i)=>s+i.amount,0),
+    payment: currentPayment()
   };
   if(EDITING.sale){
     const idx = DB.sales.findIndex(x=>x.id===EDITING.sale);
@@ -596,6 +632,10 @@ function clearSaleForm(){
   W.good.length = 0; W.low.length = 0; W.kad.length = 0;
   resetWFields('good'); resetWFields('low'); resetWFields('kad');
   document.getElementById('goodChips').innerHTML=''; document.getElementById('lowChips').innerHTML=''; document.getElementById('kadChips').innerHTML='';
+  PAYDIRTY = false;
+  document.getElementById('payMode').value = 'GPay / UPI';
+  document.getElementById('payAmt').value = '';
+  document.getElementById('payDate').value = todayStr();
   applyRateDefaults();
   refreshTotals();
 }
@@ -607,6 +647,11 @@ function applyRateDefaults(){
 }
 
 /* ---------- bill ---------- */
+function currentPayment(){
+  return { mode: document.getElementById('payMode').value,
+           paid: num('payAmt'),
+           date: document.getElementById('payDate').value || todayStr() };
+}
 function showBillPreview(){
   flushPendingW();
   const items = currentItems();
@@ -614,10 +659,49 @@ function showBillPreview(){
   showBill({
     date: todayStr(), time: new Date().toTimeString().slice(0,5),
     buyer: document.getElementById('buyerName').value.trim() || 'Walk-in buyer',
-    items, total: items.reduce((s,i)=>s+i.amount,0)
+    items, total: items.reduce((s,i)=>s+i.amount,0),
+    payment: currentPayment()
   });
 }
 let CURRENT_BILL = null;
+const upiLink = amount => 'upi://pay?pa=' + encodeURIComponent(DB.upi)
+  + '&pn=' + encodeURIComponent('India Business International')
+  + '&am=' + amount.toFixed(2) + '&cu=INR&tn=' + encodeURIComponent('Coconut Sale Bill');
+function payAmountFor(s){
+  const paid = s.payment ? s.payment.paid : 0;
+  const bal = Math.round((s.total - paid)*100)/100;
+  return bal > 0 ? bal : s.total;
+}
+function loadQR(){
+  return window.qrcode ? Promise.resolve() : new Promise((res, rej)=>{
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+    sc.onload = res; sc.onerror = rej;
+    document.head.appendChild(sc);
+  });
+}
+function qrDataUrl(text){
+  const q = qrcode(0, 'M');
+  q.addData(text);
+  q.make();
+  return q.createDataURL(6, 8);
+}
+function showGpay(){
+  if(!CURRENT_BILL) return;
+  if(!DB.upi){ alert('Set your UPI ID (GPay) in the Rates tab first.'); return; }
+  const amt = payAmountFor(CURRENT_BILL);
+  if(amt<=0) return;
+  const link = upiLink(amt);
+  const box = document.getElementById('gpayBox');
+  box.style.display = 'block';
+  box.innerHTML = `<div style="font-weight:800; margin-bottom:8px;">💳 Scan to pay ${inr(amt)} — GPay / any UPI app</div>
+    <div id="gpayQr" style="min-height:40px;"><small style="color:var(--muted)">QR loading…</small></div>
+    <a href="${link}" style="font-size:11.5px; word-break:break-all; color:var(--green-dark);">${link}</a>
+    <div style="font-size:11.5px; color:var(--muted); margin-top:6px;">UPI ID: ${esc(DB.upi)} · The 📲 WhatsApp share includes this payment link.</div>`;
+  loadQR()
+    .then(()=>{ document.getElementById('gpayQr').innerHTML = `<img src="${qrDataUrl(link)}" width="220" height="220" alt="UPI payment QR" style="border-radius:8px; image-rendering:pixelated;">`; })
+    .catch(()=>{ document.getElementById('gpayQr').innerHTML = '<small style="color:var(--muted)">QR needs internet once — the link above still works.</small>'; });
+}
 function shareWhatsApp(){
   if(!CURRENT_BILL) return;
   const s = CURRENT_BILL;
@@ -639,6 +723,17 @@ function shareWhatsApp(){
   });
   lines.push('--------------------------------');
   lines.push('💰 *AMOUNT TO COLLECT: ' + inr(s.total) + '*');
+  if(s.payment){
+    const bal = Math.round((s.total - s.payment.paid)*100)/100;
+    if(s.payment.paid > 0) lines.push('✅ Paid: ' + inr(s.payment.paid) + ' (' + s.payment.mode + ', ' + fmtDate(s.payment.date) + ')');
+    if(bal > 0) lines.push('🔴 *Balance due: ' + inr(bal) + '*');
+  }
+  if(DB.upi && payAmountFor(s) > 0){
+    lines.push('');
+    lines.push('💳 Pay ' + inr(payAmountFor(s)) + ' via GPay / any UPI app:');
+    lines.push(upiLink(payAmountFor(s)));
+    lines.push('(UPI ID: ' + DB.upi + ')');
+  }
   window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
 }
 function showBill(sale){
@@ -656,6 +751,18 @@ function showBill(sale){
     return `<tr><td>${i.label}</td><td>${qty}</td><td>${rateTxt}</td><td>${inr(i.amount)}</td></tr>`;
   }).join('');
   document.getElementById('billTotal').textContent = inr(sale.total);
+  const p = sale.payment;
+  let payHtml = '';
+  if(p){
+    const bal = Math.round((sale.total - p.paid)*100)/100;
+    if(p.paid > 0) payHtml += `✅ Paid <b>${inr(p.paid)}</b> via <b>${esc(p.mode)}</b> on ${fmtDate(p.date)}<br>`;
+    payHtml += bal > 0
+      ? `🔴 <b style="color:var(--red);">Balance due: ${inr(bal)}</b>`
+      : (p.paid > 0 ? `<b style="color:var(--green-dark);">Fully paid — nothing due.</b>` : '');
+    if(p.mode==='Pending' && p.paid<=0) payHtml = `🔴 <b style="color:var(--red);">Payment pending — full ${inr(sale.total)} due.</b>`;
+  }
+  document.getElementById('billPayInfo').innerHTML = payHtml;
+  document.getElementById('gpayBox').style.display = 'none';
   document.getElementById('billModal').classList.add('open');
 }
 function closeBill(){ document.getElementById('billModal').classList.remove('open'); }
@@ -678,14 +785,22 @@ function renderSales(){
   const kg = rows.reduce((s,x)=>s+x.items.filter(i=>i.unit==='kg').reduce((a,i)=>a+i.qty,0),0);
   const pcsSold = rows.reduce((s,x)=>s+x.items.filter(i=>i.unit==='kg').reduce((a,i)=>a+(i.count||0),0),0);
   const kadPcs = rows.reduce((s,x)=>s+x.items.filter(i=>i.type==='kad').reduce((a,i)=>a+i.qty,0),0);
+  const collected = rows.reduce((s,x)=>s+paidOf(x),0);
   document.getElementById('salesStats').innerHTML =
     stat('Sales', rows.length) + stat('Revenue', inr(revenue)) +
-    stat('Coconut kg', kg.toLocaleString('en-IN')) + stat('Husk | Kadambai pcs', kadPcs.toLocaleString('en-IN'));
+    stat('Coconut kg', kg.toLocaleString('en-IN')) + stat('Husk | Kadambai pcs', kadPcs.toLocaleString('en-IN')) +
+    stat('Collected', inr(collected)) + stat('Balance Pending', inr(revenue-collected), revenue-collected>0);
   document.getElementById('salesList').innerHTML = rows.length ? rows.map(saleRowHTML).join('')
     : '<div class="empty">No sales in this period yet.</div>';
 }
 function saleRowHTML(s){
-  const pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Husk '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
+  let pills = s.items.map(i=>`<span class="pill pill-${i.type}">${i.type==='kad'?'Husk '+i.qty+'pc':(i.type==='good'?'Good':'Low')+' '+i.qty+'kg'}</span>`).join('');
+  if(s.payment){
+    const bal = Math.round((s.total - s.payment.paid)*100)/100;
+    pills += bal > 0
+      ? `<span class="pill" style="background:#fdecea; color:var(--red);">🔴 ₹${bal.toLocaleString('en-IN')} due</span>`
+      : `<span class="pill pill-good">✅ Paid · ${esc(s.payment.mode)}</span>`;
+  }
   return `<div class="list-item">
     <div class="li-main" onclick="openSaleBill('${s.id}')">
       <div class="li-title">${esc(s.buyer)}</div>
@@ -696,6 +811,7 @@ function saleRowHTML(s){
     <button class="btn-danger-sm" onclick="delSale('${s.id}')">🗑️</button>
   </div>`;
 }
+const paidOf = s => s.payment ? Math.min(s.payment.paid, s.total) : s.total; // legacy sales count as settled
 function openSaleBill(id){
   const s = DB.sales.find(x=>x.id===id);
   if(s) showBill(s);
@@ -784,8 +900,11 @@ function renderReport(){
   }));
   const labourAmt = labour.reduce((s,l)=>s+l.amount,0);
   const revenue = goodAmt+lowAmt+kadAmt;
+  const collected = sales.reduce((s,x)=>s+paidOf(x),0);
   document.getElementById('repStats').innerHTML =
-    stat('Total Revenue', inr(revenue)) + stat('Good Quality', `${goodKg.toLocaleString('en-IN')} kg · ${inr(goodAmt)}`) +
+    stat('Total Revenue', inr(revenue)) +
+    stat('Collected', inr(collected)) + stat('Balance Pending', inr(revenue-collected), revenue-collected>0) +
+    stat('Good Quality', `${goodKg.toLocaleString('en-IN')} kg · ${inr(goodAmt)}`) +
     stat('Lower Quality', `${lowKg.toLocaleString('en-IN')} kg · ${inr(lowAmt)}`) + stat('Coconut Husk | Kadambai', `${kadPcs.toLocaleString('en-IN')} pc · ${inr(kadAmt)}`) +
     stat('Labour Cost', inr(labourAmt), true) + stat('Net (Revenue − Labour)', inr(revenue-labourAmt), revenue-labourAmt<0);
   const diff = kadAmt - labourAmt;
@@ -806,6 +925,7 @@ function renderRates(){
   document.getElementById('rateLow').value = DB.rates.low;
   document.getElementById('rateKad').value = DB.rates.kad;
   document.getElementById('rateLab').value = DB.rates.lab;
+  document.getElementById('upiId').value = DB.upi || '';
   document.getElementById('lowAutoNote').innerHTML = DB.rates.lowAuto
     ? '<b>Lower Quality is currently AUTO (50% of Good).</b>'
     : '<b>Lower Quality is currently FIXED at your own value.</b>';
@@ -821,6 +941,7 @@ function saveRates(){
   r.lowAuto = Math.abs(r.low - halfOf(r.good)) < 0.005;
   if(r.lowAuto) r.low = halfOf(r.good);
   DB.rates = r;
+  DB.upi = document.getElementById('upiId').value.trim();
   DB.rateHistory.unshift({date:todayStr(), good:r.good, low:r.low, kad:r.kad, lab:r.lab});
   save();
   applyRateDefaults(); refreshTotals(); renderRates();
@@ -913,11 +1034,14 @@ function loadSheetJS(){
 function exportExcel(){
   loadSheetJS().then(()=>{
     const wb = XLSX.utils.book_new();
-    const salesRows = [['Date','Time','Buyer','Item','Weight (kg)','Weighments','Count (pcs)','Rate (₹)','Labour ₹/pc','Amount (₹)','Bill Total (₹)']];
+    const salesRows = [['Date','Time','Buyer','Item','Weight (kg)','Weighments','Count (pcs)','Rate (₹)','Labour ₹/pc','Amount (₹)','Bill Total (₹)','Pay Mode','Paid (₹)','Pay Date','Balance (₹)']];
     DB.sales.slice().reverse().forEach(s=>s.items.forEach((i,ix)=>{
+      const p = s.payment;
       salesRows.push([fmtDate(s.date), s.time||'', s.buyer, i.label,
         i.unit==='kg'? i.qty : '', (i.wts&&i.wts.length)? i.wts.join(' + ') : '',
-        i.count||'', i.rate, i.labRate||'', i.amount, ix===0 ? s.total : '']);
+        i.count||'', i.rate, i.labRate||'', i.amount, ix===0 ? s.total : '',
+        ix===0&&p ? p.mode : '', ix===0&&p ? p.paid : '', ix===0&&p ? fmtDate(p.date) : '',
+        ix===0&&p ? Math.round((s.total-p.paid)*100)/100 : '']);
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(salesRows), 'Sales');
     const batchRows = [['Date','Coconut Count','Note']];

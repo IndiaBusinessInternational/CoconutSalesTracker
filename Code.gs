@@ -22,18 +22,22 @@ function doPost(e) {
 
     var salesRows = [];
     (d.sales || []).slice().reverse().forEach(function (s) {
+      var p = s.payment;
       (s.items || []).forEach(function (i, ix) {
         salesRows.push([
           s.date || '', s.time || '', s.buyer || '', i.label || '',
           i.unit === 'kg' ? i.qty : '',
           (i.wts && i.wts.length) ? i.wts.join(' + ') : '',
           i.count || '', i.rate || 0, i.labRate || '',
-          i.amount || 0, ix === 0 ? s.total : ''
+          i.amount || 0, ix === 0 ? s.total : '',
+          ix === 0 && p ? p.mode : '', ix === 0 && p ? p.paid : '',
+          ix === 0 && p ? p.date : '',
+          ix === 0 && p ? Math.round((s.total - p.paid) * 100) / 100 : ''
         ]);
       });
     });
     writeSheet_(ss, 'Sales',
-      ['Date', 'Time', 'Buyer', 'Item', 'Weight (kg)', 'Weighments', 'Count (pcs)', 'Rate', 'Labour/pc', 'Amount', 'Bill Total'],
+      ['Date', 'Time', 'Buyer', 'Item', 'Weight (kg)', 'Weighments', 'Count (pcs)', 'Rate', 'Labour/pc', 'Amount', 'Bill Total', 'Pay Mode', 'Paid', 'Pay Date', 'Balance'],
       salesRows);
 
     writeSheet_(ss, 'Batches', ['Date', 'Coconut Count', 'Note'],
