@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pay — India Business International</title>
+<meta name="theme-color" content="#12592f">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif; background:#fdfaf4; min-height:100vh;
+  display:flex; align-items:center; justify-content:center; padding:16px;}
+.card{background:#fff; border:1px solid #dfe8e2; border-radius:18px; padding:26px 22px; max-width:380px;
+  width:100%; text-align:center; box-shadow:0 4px 18px rgba(0,0,0,.08);}
+.brand{font-size:11px; letter-spacing:2px; font-weight:700; color:#6b7a70;}
+h1{font-size:20px; font-weight:900; color:#12592f; margin:6px 0 14px;}
+.amt{font-size:38px; font-weight:900; color:#12592f; margin-bottom:16px;}
+.btn{display:block; background:#1b7a43; color:#fff; text-decoration:none; font-size:16px; font-weight:800;
+  padding:14px; border-radius:12px; margin-bottom:16px;}
+.btn:active{background:#12592f;}
+#qr img{border-radius:10px; image-rendering:pixelated;}
+.upi{font-size:13px; font-weight:700; color:#1e2b22; margin-top:12px; word-break:break-all;}
+.note{font-size:12px; color:#6b7a70; margin-top:10px; line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">INDIA BUSINESS INTERNATIONAL</div>
+  <h1>🥥 Coconut Sale Payment</h1>
+  <div class="amt" id="amt"></div>
+  <a class="btn" id="payBtn" href="#">💳 Pay with GPay / UPI app</a>
+  <div id="qr"></div>
+  <div class="upi" id="upiText"></div>
+  <div class="note">Button did not open your app? Scan the QR with GPay / any UPI app, or pay directly to the UPI ID above.</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script>
+'use strict';
+const P = new URLSearchParams(location.search);
+const pa = P.get('pa') || 'indiabusinessinternational@okicici';
+const am = parseFloat(P.get('am') || '0');
+const link = 'upi://pay?pa=' + encodeURIComponent(pa)
+  + '&pn=' + encodeURIComponent('India Business International')
+  + (am > 0 ? '&am=' + am.toFixed(2) : '')
+  + '&cu=INR&tn=' + encodeURIComponent(P.get('tn') || 'Coconut Sale Bill');
+document.getElementById('amt').textContent = am > 0
+  ? '₹' + am.toLocaleString('en-IN', {maximumFractionDigits:2}) : '';
+document.getElementById('payBtn').href = link;
+document.getElementById('upiText').textContent = 'UPI ID: ' + pa;
+try{
+  const q = qrcode(0, 'M');
+  q.addData(link);
+  q.make();
+  document.getElementById('qr').innerHTML = q.createImgTag(5, 8);
+}catch(e){}
+// try to open the UPI app straight away on phones; the page stays as fallback
+setTimeout(() => { location.href = link; }, 900);
+</script>
+</body>
+</html>

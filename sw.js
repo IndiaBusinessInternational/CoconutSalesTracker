@@ -1,8 +1,8 @@
 /* IBI Coconut Sales Tracker service worker.
    ⚠ Bump CACHE_NAME on EVERY release alongside the version badge —
    a stale cache serving an old build is invisible and looks like a broken deploy. */
-const CACHE_NAME = 'cst-v2.5';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE_NAME = 'cst-v2.6';
+const ASSETS = ['./', './index.html', './pay.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

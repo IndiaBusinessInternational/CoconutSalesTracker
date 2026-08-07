@@ -137,7 +137,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2.5</span>
+  <span class="app-version-badge">v2.6</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
   <button id="installBtn" hidden onclick="installApp()">📲 Install</button>
@@ -680,12 +680,23 @@ function loadQR(){
     document.head.appendChild(sc);
   });
 }
-function qrDataUrl(text){
+function qrCanvas(text, scale=8, margin=4){
   const q = qrcode(0, 'M');
   q.addData(text);
   q.make();
-  return q.createDataURL(6, 8);
+  const n = q.getModuleCount();
+  const c = document.createElement('canvas');
+  c.width = c.height = (n + margin*2) * scale;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = '#000000';
+  for(let r=0; r<n; r++) for(let col=0; col<n; col++)
+    if(q.isDark(r, col)) ctx.fillRect((col+margin)*scale, (r+margin)*scale, scale, scale);
+  return c;
 }
+const qrDataUrl = text => qrCanvas(text).toDataURL('image/png');
+const PAY_PAGE = 'https://coconut.indiabusinessinternational.online/pay.html';
+const payPageLink = amount => PAY_PAGE + '?am=' + amount.toFixed(2) + (DB.upi ? '&pa=' + encodeURIComponent(DB.upi) : '');
 function showGpay(){
   if(!CURRENT_BILL) return;
   if(!DB.upi){ alert('Set your UPI ID (GPay) in the Rates tab first.'); return; }
@@ -728,13 +739,26 @@ function shareWhatsApp(){
     if(s.payment.paid > 0) lines.push('✅ Paid: ' + inr(s.payment.paid) + ' (' + s.payment.mode + ', ' + fmtDate(s.payment.date) + ')');
     if(bal > 0) lines.push('🔴 *Balance due: ' + inr(bal) + '*');
   }
-  if(DB.upi && payAmountFor(s) > 0){
+  const amt = payAmountFor(s);
+  if(DB.upi && amt > 0){
     lines.push('');
-    lines.push('💳 Pay ' + inr(payAmountFor(s)) + ' via GPay / any UPI app:');
-    lines.push(upiLink(payAmountFor(s)));
-    lines.push('(UPI ID: ' + DB.upi + ')');
+    lines.push('💳 *Tap to pay ' + inr(amt) + '* (GPay / any UPI app):');
+    lines.push(payPageLink(amt));
+    lines.push('UPI ID: ' + DB.upi);
   }
-  window.open('https://wa.me/?text=' + encodeURIComponent(lines.join('\n')), '_blank');
+  const text = lines.join('\n');
+  // on phones, attach the payment QR as an image via the native share sheet
+  if(DB.upi && amt > 0 && navigator.canShare){
+    loadQR().then(()=>new Promise(res=>qrCanvas(upiLink(amt)).toBlob(res, 'image/png')))
+      .then(blob=>{
+        const file = new File([blob], 'gpay-qr.png', {type:'image/png'});
+        if(navigator.canShare({files:[file]})) return navigator.share({files:[file], text});
+        throw new Error('files unsupported');
+      })
+      .catch(err=>{ if(!err || err.name !== 'AbortError') window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); });
+    return;
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
 function showBill(sale){
   CURRENT_BILL = sale;
