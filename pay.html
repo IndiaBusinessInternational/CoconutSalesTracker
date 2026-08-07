@@ -18,6 +18,7 @@ h1{font-size:20px; font-weight:900; color:#12592f; margin:6px 0 14px;}
 .btn{display:block; background:#1b7a43; color:#fff; text-decoration:none; font-size:16px; font-weight:800;
   padding:14px; border-radius:12px; margin-bottom:16px;}
 .btn:active{background:#12592f;}
+.btn.back{background:#fff; color:#12592f; border:1.5px solid #1b7a43; margin:16px 0 0;}
 #qr img{border-radius:10px; image-rendering:pixelated;}
 .upi{font-size:13px; font-weight:700; color:#1e2b22; margin-top:12px; word-break:break-all;}
 .note{font-size:12px; color:#6b7a70; margin-top:10px; line-height:1.6;}
@@ -32,6 +33,7 @@ h1{font-size:20px; font-weight:900; color:#12592f; margin:6px 0 14px;}
   <div id="qr"></div>
   <div class="upi" id="upiText"></div>
   <div class="note">Button did not open your app? Scan the QR with GPay / any UPI app, or pay directly to the UPI ID above.</div>
+  <a class="btn back" id="backBtn" href="#">← Go Back</a>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
@@ -53,8 +55,18 @@ try{
   q.make();
   document.getElementById('qr').innerHTML = q.createImgTag(5, 8);
 }catch(e){}
-// try to open the UPI app straight away on phones; the page stays as fallback
-setTimeout(() => { location.href = link; }, 900);
+document.getElementById('backBtn').addEventListener('click', e => {
+  e.preventDefault();
+  if(history.length > 1) history.back(); else window.close();
+});
+// try to open the UPI app straight away — but only ONCE per visit, so coming
+// back from GPay / pressing Back does not bounce the user out again
+let autoFired = false;
+try{ autoFired = sessionStorage.getItem('cst_pay_auto') === location.search; }catch(e){}
+if(!autoFired && am > 0){
+  try{ sessionStorage.setItem('cst_pay_auto', location.search); }catch(e){}
+  setTimeout(() => { location.href = link; }, 900);
+}
 </script>
 </body>
 </html>
