@@ -22,6 +22,12 @@ h1{font-size:20px; font-weight:900; color:#12592f; margin:6px 0 14px;}
 #qr img{border-radius:10px; image-rendering:pixelated;}
 .upi{font-size:13px; font-weight:700; color:#1e2b22; margin-top:12px; word-break:break-all;}
 .note{font-size:12px; color:#6b7a70; margin-top:10px; line-height:1.6;}
+/* v2.8: phones edge to edge — full-width card, 10px side padding */
+@media(max-width:640px){
+  html,body{overflow-x:clip;}
+  body{padding:0;}
+  .card{max-width:none; border-radius:0; border-left:0; border-right:0; box-shadow:none; padding:26px 10px; overflow-wrap:anywhere;}
+}
 </style>
 </head>
 <body>

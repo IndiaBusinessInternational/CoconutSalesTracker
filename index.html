@@ -122,6 +122,18 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 .filter-row{display:flex; gap:8px; margin-bottom:10px;}
 .filter-row select,.filter-row input{padding:9px 10px; font-size:14px;}
 .hint{background:#fff8e6; border:1px solid #f1e2b6; color:#7a5b12; font-size:12px; border-radius:10px; padding:10px 12px; margin-bottom:12px; line-height:1.5;}
+/* v2.8 (CEO 11 Oct 2026, edge to edge on phones): no outer margin, full-width cards and list rows with 10px inside,
+   header 8px, the page can never be wider than the screen (clip, not hidden, keeps the sticky header). Fonts unchanged. */
+@media(max-width:640px){
+  html,body{overflow-x:clip;}
+  header{padding-left:8px; padding-right:8px;}
+  main{padding:8px 0;}
+  .card{border-radius:0; border-left:0; border-right:0; box-shadow:none; padding:14px 10px; margin-bottom:8px; overflow-wrap:anywhere;}
+  .filter-row,.stat-grid,.section-title,.page > .hint{margin-left:10px; margin-right:10px;}
+  .stat-grid{gap:8px; grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .page > div:not(.card) > .list-item{border-radius:0; border-left:0; border-right:0; padding:10px; margin-bottom:8px; overflow-wrap:anywhere;}
+  .modal-bg{padding:8px;}
+}
 @media(min-width:700px){
   .tabbar{max-width:760px; left:50%; transform:translateX(-50%); border-radius:14px 14px 0 0; border:1px solid var(--line); border-bottom:0;}
   .stat-grid{grid-template-columns:repeat(4,1fr);}
@@ -137,7 +149,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2.7</span>
+  <span class="app-version-badge">v2.8</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
   <button id="installBtn" hidden onclick="installApp()">📲 Install</button>
