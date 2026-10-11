@@ -128,10 +128,11 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
   html,body{overflow-x:clip;}
   header{padding-left:8px; padding-right:8px;}
   main{padding:8px 0;}
-  .card{border-radius:0; border-left:0; border-right:0; box-shadow:none; padding:14px 10px; margin-bottom:8px; overflow-wrap:anywhere;}
+  .card{border-radius:0; border-left:0; border-right:0; box-shadow:none; padding:14px 10px; margin-bottom:8px; overflow-wrap:break-word;}
   .filter-row,.stat-grid,.section-title,.page > .hint{margin-left:10px; margin-right:10px;}
   .stat-grid{gap:8px; grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
-  .page > div:not(.card) > .list-item{border-radius:0; border-left:0; border-right:0; padding:10px; margin-bottom:8px; overflow-wrap:anywhere;}
+  .page > div:not(.card) > .list-item{border-radius:0; border-left:0; border-right:0; padding:10px; margin-bottom:8px; overflow-wrap:break-word;}
+  button,.btn,select,input,[role="button"]{overflow-wrap:normal;}
   .modal-bg{padding:8px;}
 }
 @media(min-width:700px){
@@ -149,7 +150,7 @@ input:focus,select:focus{outline:none; border-color:var(--green);}
 </head>
 <body>
 <header>
-  <span class="app-version-badge">v2.8</span>
+  <span class="app-version-badge">v2.9</span>
   <span class="logo">🥥</span>
   <h1>Coconut Sales Tracker</h1>
   <button id="installBtn" hidden onclick="installApp()">📲 Install</button>
