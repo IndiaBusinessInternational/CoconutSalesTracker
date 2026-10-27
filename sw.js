@@ -1,7 +1,7 @@
 /* IBI Coconut Sales Tracker service worker.
    ⚠ Bump CACHE_NAME on EVERY release alongside the version badge —
    a stale cache serving an old build is invisible and looks like a broken deploy. */
-const CACHE_NAME = 'cst-v2.10';
+const CACHE_NAME = 'cst-v2.11';
 const ASSETS = ['./', './index.html', './pay.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './ibi-share.js'];
 
 self.addEventListener('install', e => {
